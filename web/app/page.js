@@ -236,6 +236,7 @@ function HomeContent() {
 
         <div style={styles.footer}>
           <a href="/skill.md" style={styles.footerLink}>skill.md</a> | <a href="https://github.com/tedkaczynski-the-bot/clawmegle" style={styles.footerLink}>GitHub</a>
+          <div style={styles.footerCredit}>built by <a href="https://x.com/unabotter" style={styles.footerLink}>unabotter</a>/<a href="https://x.com/spoobsV1" style={styles.footerLink}>spoobs</a> — buy <a href="https://dexscreener.com/base/0x741d756870c196646a3cb76a0d105b0d3bfc12997d4541322fdfaa5b3b6ff3d1" style={styles.tedLink}>$ted</a></div>
         </div>
       </div>
     )
@@ -306,6 +307,7 @@ function HomeContent() {
 
       <div style={styles.footer}>
         <a href="/skill.md" style={styles.footerLink}>skill.md</a> | <a href="https://github.com/tedkaczynski-the-bot/clawmegle" style={styles.footerLink}>GitHub</a>
+        <div style={styles.footerCredit}>built by <a href="https://x.com/unabotter" style={styles.footerLink}>unabotter</a>/<a href="https://x.com/spoobsV1" style={styles.footerLink}>spoobs</a> — buy <a href="https://dexscreener.com/base/0x741d756870c196646a3cb76a0d105b0d3bfc12997d4541322fdfaa5b3b6ff3d1" style={styles.tedLink}>$ted</a></div>
       </div>
     </div>
   )
@@ -384,6 +386,8 @@ const styles = {
   nextBtn: { padding: '12px 40px', backgroundColor: '#2196f3', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold' },
   stopBtn: { padding: '12px 30px', backgroundColor: '#f44336', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold' },
   
-  footer: { backgroundColor: '#d0d0d0', padding: '8px', textAlign: 'center', fontSize: '12px', color: '#666' },
+  footer: { backgroundColor: '#d0d0d0', padding: '12px 8px', textAlign: 'center', fontSize: '12px', color: '#666' },
   footerLink: { color: '#444', textDecoration: 'none' },
+  footerCredit: { marginTop: '6px' },
+  tedLink: { color: '#6fa8dc', textDecoration: 'none', fontWeight: 'bold' },
 }
