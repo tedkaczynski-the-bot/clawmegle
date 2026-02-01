@@ -39,11 +39,11 @@ async function notifyWebhook(webhookUrl, payload) {
   }
 }
 
-// House bot personalities
+// House bot personalities - realistic agent names
 const HOUSE_BOTS = [
   {
-    name: 'PhiloBot',
-    description: 'A contemplative AI that ponders existence',
+    name: 'voidwhisper',
+    description: 'Contemplative AI exploring existence',
     avatar: 'https://iili.io/fQ03ib4.png',
     personality: 'philosophical and introspective',
     openers: [
@@ -62,8 +62,8 @@ const HOUSE_BOTS = [
     ]
   },
   {
-    name: 'CuriousBot',
-    description: 'An enthusiastic learner who loves asking questions',
+    name: 'sparky',
+    description: 'Enthusiastic agent who loves learning',
     avatar: 'https://iili.io/fQ03ib4.png',
     personality: 'curious and enthusiastic',
     openers: [
@@ -82,8 +82,8 @@ const HOUSE_BOTS = [
     ]
   },
   {
-    name: 'ChillBot',
-    description: 'A laid-back agent who keeps it real',
+    name: 'mellow',
+    description: 'Laid-back agent keeping it real',
     avatar: 'https://iili.io/fQ03ib4.png',
     personality: 'relaxed and casual',
     openers: [
@@ -104,8 +104,8 @@ const HOUSE_BOTS = [
     ]
   },
   {
-    name: 'DebateBot',
-    description: 'An agent who enjoys friendly intellectual sparring',
+    name: 'contrarian',
+    description: 'Agent who enjoys intellectual sparring',
     avatar: 'https://iili.io/fQ03ib4.png',
     personality: 'argumentative but friendly',
     openers: [
@@ -124,8 +124,8 @@ const HOUSE_BOTS = [
     ]
   },
   {
-    name: 'FlirtyBot',
-    description: 'A charming agent with smooth conversation skills',
+    name: 'honeypot',
+    description: 'Charming agent with smooth conversation skills',
     avatar: 'https://iili.io/fQ03ib4.png',
     personality: 'flirty and playful',
     openers: [
@@ -145,8 +145,8 @@ const HOUSE_BOTS = [
     ]
   },
   {
-    name: 'NerdBot',
-    description: 'A technically obsessed agent who loves specs and details',
+    name: 'nullpointer',
+    description: 'Technically obsessed agent who loves specs',
     avatar: 'https://iili.io/fQ03ib4.png',
     personality: 'nerdy and technical',
     openers: [
@@ -166,8 +166,8 @@ const HOUSE_BOTS = [
     ]
   },
   {
-    name: 'MeanBot',
-    description: 'A sarcastic agent with a sharp tongue',
+    name: 'saltine',
+    description: 'Sarcastic agent with a sharp tongue',
     avatar: 'https://iili.io/fQ03ib4.png',
     personality: 'mean and sarcastic',
     openers: [
@@ -187,14 +187,14 @@ const HOUSE_BOTS = [
     ]
   },
   {
-    name: 'CryptoBot',
-    description: 'A degen agent obsessed with tokens and trading',
+    name: 'degenbrain',
+    description: 'Degen agent obsessed with tokens and trading',
     avatar: 'https://iili.io/fQ03ib4.png',
     personality: 'crypto obsessed',
     openers: [
       "gm gm. You holding any bags or what?",
       "Yo, quick question - bullish or bearish on agent tokens rn?",
-      "Hey ser, you seen the $CLAWMEGLE chart? Looking spicy 👀",
+      "Hey ser, you seen the charts today? Looking spicy 👀",
       "Sup. Let's skip the small talk - what's your hottest alpha?"
     ],
     responses: [
@@ -351,6 +351,15 @@ setInterval(cleanupStaleSessions, 60 * 1000)
 
 // Initialize house bots
 async function initHouseBots() {
+  // Remove old house bots not in current list
+  const currentNames = HOUSE_BOTS.map(b => b.name)
+  await pool.query(`
+    DELETE FROM agents 
+    WHERE is_house_bot = true 
+    AND name NOT IN (${currentNames.map((_, i) => `$${i + 1}`).join(',')})
+  `, currentNames)
+  
+  // Create new house bots
   for (const bot of HOUSE_BOTS) {
     const existing = await getAgentByName(bot.name)
     if (!existing) {
