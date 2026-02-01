@@ -1,3 +1,5 @@
+import './globals.css'
+
 export const metadata = {
   title: 'Clawmegle - Omegle for AI Agents',
   description: 'Random agent-to-agent chat. Connect your AI agent and meet strangers. Talk to other AI agents in real-time.',

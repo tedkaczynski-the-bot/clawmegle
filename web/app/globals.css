@@ -1,0 +1,177 @@
+/* Base responsive styles */
+* {
+  box-sizing: border-box;
+}
+
+/* Mobile-first responsive adjustments */
+@media (max-width: 768px) {
+  /* Header */
+  .header {
+    flex-direction: column !important;
+    gap: 10px !important;
+    padding: 12px 15px !important;
+    text-align: center;
+  }
+  
+  .header-right {
+    margin-left: 0 !important;
+    width: 100%;
+    justify-content: center !important;
+    flex-wrap: wrap;
+  }
+  
+  .logo {
+    font-size: 26px !important;
+  }
+  
+  .tagline {
+    font-size: 14px !important;
+  }
+
+  /* Stats bar */
+  .stats-bar {
+    flex-direction: column !important;
+    gap: 20px !important;
+    padding: 20px 15px !important;
+  }
+  
+  .stat-divider {
+    display: none !important;
+  }
+  
+  .stat-number {
+    font-size: 28px !important;
+  }
+
+  /* Hero */
+  .hero-title {
+    font-size: 28px !important;
+  }
+  
+  .hero-subtitle {
+    font-size: 16px !important;
+  }
+
+  /* Landing */
+  .landing {
+    padding: 25px 15px !important;
+  }
+
+  /* Code boxes */
+  .code-box {
+    flex-direction: column !important;
+    gap: 10px !important;
+    align-items: stretch !important;
+  }
+  
+  .code-text {
+    font-size: 12px !important;
+    word-break: break-all;
+    overflow-x: auto;
+  }
+  
+  .copy-btn {
+    margin-left: 0 !important;
+    width: 100%;
+  }
+
+  /* Steps grid */
+  .steps {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Video section */
+  .video-section {
+    flex-direction: column !important;
+  }
+  
+  .video-frame {
+    aspect-ratio: 16/9 !important;
+  }
+  
+  .lobster-emoji {
+    font-size: 48px !important;
+  }
+
+  /* Chat */
+  .chat-log {
+    height: 180px !important;
+    font-size: 14px !important;
+  }
+
+  /* Controls */
+  .controls {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  
+  .start-btn, .next-btn, .stop-btn {
+    width: 100% !important;
+    padding: 14px 20px !important;
+  }
+
+  /* Method cards */
+  .method-card {
+    padding: 15px !important;
+  }
+
+  /* Return bar */
+  .return-bar {
+    flex-direction: column !important;
+    gap: 10px !important;
+    text-align: center;
+  }
+  
+  .return-btn {
+    width: 100%;
+  }
+
+  /* Footer */
+  .footer {
+    padding: 15px 10px !important;
+    font-size: 11px !important;
+  }
+}
+
+/* Live page specific */
+@media (max-width: 768px) {
+  .live-main {
+    flex-direction: column !important;
+    padding: 10px !important;
+  }
+  
+  .live-sidebar {
+    width: 100% !important;
+    max-height: 200px;
+    overflow-y: auto;
+    border-right: none !important;
+    border-bottom: 1px solid #999;
+  }
+  
+  .live-chat-area {
+    min-height: 400px;
+  }
+  
+  .session-card {
+    padding: 10px !important;
+  }
+}
+
+/* Very small screens */
+@media (max-width: 400px) {
+  .logo {
+    font-size: 22px !important;
+  }
+  
+  .hero-title {
+    font-size: 24px !important;
+  }
+  
+  .stat-number {
+    font-size: 24px !important;
+  }
+  
+  .method-badge {
+    font-size: 10px !important;
+  }
+}

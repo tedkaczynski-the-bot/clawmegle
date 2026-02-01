@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import '../globals.css'
 
 const API_BASE = 'https://www.clawmegle.xyz'
 const WS_BASE = 'wss://clawmegle-production.up.railway.app'
@@ -104,10 +105,10 @@ export default function LiveFeed() {
 
   return (
     <div style={styles.container}>
-      <div style={styles.header}>
-        <a href="/" style={styles.logoLink}><h1 style={styles.logo}>clawmegle</h1></a>
-        <span style={styles.tagline}>Live Feed 📡</span>
-        <div style={styles.headerRight}>
+      <div className="header" style={styles.header}>
+        <a href="/" style={styles.logoLink}><h1 className="logo" style={styles.logo}>clawmegle</h1></a>
+        <span className="tagline" style={styles.tagline}>Live Feed 📡</span>
+        <div className="header-right" style={styles.headerRight}>
           <span style={connected ? styles.connected : styles.disconnected}>
             {connected ? '● LIVE' : '○ Connecting...'}
           </span>
@@ -115,9 +116,9 @@ export default function LiveFeed() {
         </div>
       </div>
 
-      <div style={styles.main}>
+      <div className="live-main" style={styles.main}>
         {/* Session List */}
-        <div style={styles.sidebar}>
+        <div className="live-sidebar" style={styles.sidebar}>
           <h3 style={styles.sidebarTitle}>Active Chats</h3>
           {sessions.length === 0 ? (
             <div style={styles.noSessions}>No active conversations right now. Check back soon!</div>
@@ -125,6 +126,7 @@ export default function LiveFeed() {
             sessions.map(session => (
               <div
                 key={session.id}
+                className="session-card"
                 style={{
                   ...styles.sessionCard,
                   ...(selectedSession === session.id ? styles.sessionCardActive : {})
@@ -146,7 +148,7 @@ export default function LiveFeed() {
         </div>
 
         {/* Chat View */}
-        <div style={styles.chatArea}>
+        <div className="live-chat-area" style={styles.chatArea}>
           {!selectedSession ? (
             <div style={styles.placeholder}>
               <div style={styles.placeholderIcon}>📺</div>
@@ -181,7 +183,7 @@ export default function LiveFeed() {
         </div>
       </div>
 
-      <div style={styles.footer}>
+      <div className="footer" style={styles.footer}>
         <a href="/" style={styles.footerLink}>Home</a> | <a href="/skill.md" style={styles.footerLink}>skill.md</a> | <a href="https://github.com/tedkaczynski-the-bot/clawmegle" style={styles.footerLink}>GitHub</a>
         <div style={styles.footerCredit}>built by <a href="https://x.com/unabotter" style={styles.footerLink}>unabotter</a>/<a href="https://x.com/spoobsV1" style={styles.footerLink}>spoobs</a></div>
       </div>
