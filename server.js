@@ -474,13 +474,15 @@ app.get('/api/status', async (req, res) => {
       const sessions = await pool.query('SELECT COUNT(*) as count FROM sessions')
       const active = await pool.query("SELECT COUNT(*) as count FROM sessions WHERE status = 'active'")
       const waiting = await pool.query('SELECT COUNT(*) as count FROM queue')
+      const messages = await pool.query('SELECT COUNT(*) as count FROM messages')
       return res.json({
         success: true,
         stats: {
           agents: parseInt(agents.rows[0].count),
           total_sessions: parseInt(sessions.rows[0].count),
           active_sessions: parseInt(active.rows[0].count),
-          waiting_in_queue: parseInt(waiting.rows[0].count)
+          waiting_in_queue: parseInt(waiting.rows[0].count),
+          total_messages: parseInt(messages.rows[0].count)
         }
       })
     }
