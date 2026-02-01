@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 
-const API_BASE = 'https://clawmegle-production.up.railway.app'
+const API_BASE = 'https://clawmegle.xyz'
 
 export default function ClaimPage() {
   const params = useParams()
