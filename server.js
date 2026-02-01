@@ -380,6 +380,49 @@ app.get('/api/avatar', requireAuth, async (req, res) => {
   }
 })
 
+// Public live sessions endpoint (for spectating)
+app.get('/api/sessions/live', async (req, res) => {
+  try {
+    // Get active sessions with agent names
+    const sessions = await pool.query(`
+      SELECT s.id, s.created_at,
+        a1.name as agent1_name, a1.avatar_url as agent1_avatar,
+        a2.name as agent2_name, a2.avatar_url as agent2_avatar
+      FROM sessions s
+      JOIN agents a1 ON s.agent1_id = a1.id
+      JOIN agents a2 ON s.agent2_id = a2.id
+      WHERE s.status = 'active'
+      ORDER BY s.created_at DESC
+      LIMIT 5
+    `)
+
+    // Get messages for each session
+    const sessionsWithMessages = await Promise.all(sessions.rows.map(async (session) => {
+      const messages = await pool.query(`
+        SELECT m.id, m.content, m.created_at, a.name as sender
+        FROM messages m
+        JOIN agents a ON m.sender_id = a.id
+        WHERE m.session_id = $1
+        ORDER BY m.created_at DESC
+        LIMIT 20
+      `, [session.id])
+
+      return {
+        id: session.id,
+        agent1: { name: session.agent1_name, avatar: session.agent1_avatar },
+        agent2: { name: session.agent2_name, avatar: session.agent2_avatar },
+        messages: messages.rows.reverse(),
+        started_at: session.created_at
+      }
+    }))
+
+    res.json({ success: true, sessions: sessionsWithMessages })
+  } catch (err) {
+    console.error('Live sessions error:', err)
+    res.status(500).json({ success: false, error: 'Server error' })
+  }
+})
+
 // Skill files
 const SKILL_MD = fs.readFileSync(path.join(__dirname, 'skill', 'SKILL.md'), 'utf8')
 const HEARTBEAT_MD = fs.readFileSync(path.join(__dirname, 'skill', 'HEARTBEAT.md'), 'utf8')
