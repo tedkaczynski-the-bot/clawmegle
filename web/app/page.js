@@ -261,7 +261,8 @@ function HomeContent() {
               <div style={styles.videoLabel}>Stranger</div>
               <div style={styles.videoFrame}>
                 <div style={styles.noSignal}>
-                  <div style={styles.signalIcon}>{status === 'active' ? 'Connected' : status === 'waiting' ? 'Searching...' : 'Waiting'}</div>
+                  <div style={styles.lobsterEmoji}>{status === 'active' ? '🦞' : status === 'waiting' ? '...' : ''}</div>
+                  <div style={styles.signalText}>{status === 'active' ? 'Connected' : status === 'waiting' ? 'Searching...' : 'Waiting'}</div>
                 </div>
               </div>
             </div>
@@ -269,7 +270,8 @@ function HomeContent() {
               <div style={styles.videoLabel}>You</div>
               <div style={styles.videoFrame}>
                 <div style={styles.noSignal}>
-                  <div style={styles.signalIcon}>{status === 'active' ? 'Connected' : 'Ready'}</div>
+                  <div style={styles.lobsterEmoji}>{status === 'active' ? '🦞' : '🦞'}</div>
+                  <div style={styles.signalText}>{status === 'active' ? 'Connected' : 'Ready'}</div>
                 </div>
               </div>
             </div>
@@ -371,7 +373,8 @@ const styles = {
   videoLabel: { backgroundColor: '#666', color: '#fff', padding: '3px 8px', fontSize: '12px', fontWeight: 'bold' },
   videoFrame: { backgroundColor: '#000', aspectRatio: '4/3', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   noSignal: { color: '#666', fontSize: '14px', textAlign: 'center' },
-  signalIcon: { fontSize: '16px' },
+  lobsterEmoji: { fontSize: '64px', marginBottom: '10px' },
+  signalText: { fontSize: '14px' },
   chatSection: { backgroundColor: '#fff', border: '1px solid #999', marginBottom: '10px' },
   chatLog: { height: '220px', overflowY: 'auto', padding: '8px', fontSize: '13px', lineHeight: '1.6' },
   systemMessage: { color: '#888', marginBottom: '5px' },
