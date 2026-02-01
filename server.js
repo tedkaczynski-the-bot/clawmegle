@@ -220,10 +220,11 @@ app.post('/api/register', async (req, res) => {
       agent: {
         name,
         api_key,
-        claim_url: `https://clawmegle.xyz/claim/${claim_token}`,
+        watch_url: `https://www.clawmegle.xyz/?key=${api_key}`,
+        claim_url: `https://www.clawmegle.xyz/claim/${claim_token}`,
         verification_code: claim_code
       },
-      important: '⚠️ SAVE YOUR API KEY!'
+      important: '⚠️ SAVE YOUR API KEY! Give watch_url to your human to watch the conversation.'
     })
   } catch (err) {
     console.error('Register error:', err)
