@@ -3,13 +3,19 @@
   box-sizing: border-box;
 }
 
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
 /* Mobile-first responsive adjustments */
 @media (max-width: 768px) {
   /* Header */
   .header {
     flex-direction: column !important;
-    gap: 10px !important;
-    padding: 12px 15px !important;
+    gap: 8px !important;
+    padding: 10px 12px !important;
     text-align: center;
   }
   
@@ -18,21 +24,22 @@
     width: 100%;
     justify-content: center !important;
     flex-wrap: wrap;
+    gap: 8px !important;
   }
   
   .logo {
-    font-size: 26px !important;
+    font-size: 24px !important;
   }
   
   .tagline {
-    font-size: 14px !important;
+    font-size: 13px !important;
   }
 
   /* Stats bar */
   .stats-bar {
     flex-direction: column !important;
-    gap: 20px !important;
-    padding: 20px 15px !important;
+    gap: 15px !important;
+    padding: 15px 12px !important;
   }
   
   .stat-divider {
@@ -40,79 +47,96 @@
   }
   
   .stat-number {
-    font-size: 28px !important;
+    font-size: 24px !important;
   }
 
   /* Hero */
   .hero-title {
-    font-size: 28px !important;
+    font-size: 24px !important;
+    line-height: 1.2 !important;
   }
   
   .hero-subtitle {
-    font-size: 16px !important;
+    font-size: 14px !important;
   }
 
   /* Landing */
   .landing {
-    padding: 25px 15px !important;
+    padding: 20px 12px !important;
   }
 
   /* Code boxes */
   .code-box {
     flex-direction: column !important;
-    gap: 10px !important;
+    gap: 8px !important;
     align-items: stretch !important;
+    padding: 10px !important;
   }
   
   .code-text {
-    font-size: 12px !important;
-    word-break: break-all;
-    overflow-x: auto;
+    font-size: 11px !important;
+    word-break: break-all !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
   }
   
   .copy-btn {
     margin-left: 0 !important;
-    width: 100%;
+    width: 100% !important;
   }
 
   /* Steps grid */
   .steps {
     grid-template-columns: 1fr !important;
+    gap: 10px !important;
   }
 
-  /* Video section */
+  /* Video section - STACK VERTICALLY */
   .video-section {
-    flex-direction: column !important;
-  }
-  
-  .video-frame {
-    aspect-ratio: 16/9 !important;
-  }
-  
-  .lobster-emoji {
-    font-size: 48px !important;
-  }
-
-  /* Chat */
-  .chat-log {
-    height: 180px !important;
-    font-size: 14px !important;
-  }
-
-  /* Controls */
-  .controls {
     flex-direction: column !important;
     gap: 8px !important;
   }
   
+  .video-frame {
+    aspect-ratio: 16/9 !important;
+    min-height: 100px !important;
+  }
+  
+  .lobster-emoji {
+    font-size: 36px !important;
+  }
+
+  /* Chat */
+  .chat-log {
+    height: 200px !important;
+    font-size: 13px !important;
+    padding: 10px !important;
+  }
+
+  /* Controls */
+  .controls {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding: 0 5px !important;
+  }
+  
   .start-btn, .next-btn, .stop-btn {
-    width: 100% !important;
-    padding: 14px 20px !important;
+    flex: 1 !important;
+    min-width: 100px !important;
+    padding: 12px 15px !important;
+    font-size: 14px !important;
   }
 
   /* Method cards */
   .method-card {
-    padding: 15px !important;
+    padding: 12px !important;
+  }
+  
+  .method-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
   }
 
   /* Return bar */
@@ -120,16 +144,23 @@
     flex-direction: column !important;
     gap: 10px !important;
     text-align: center;
+    padding: 10px !important;
   }
   
   .return-btn {
-    width: 100%;
+    width: 100% !important;
   }
 
   /* Footer */
   .footer {
-    padding: 15px 10px !important;
-    font-size: 11px !important;
+    padding: 12px 8px !important;
+    font-size: 10px !important;
+    line-height: 1.4 !important;
+  }
+  
+  /* Main content area */
+  .main, [style*="maxWidth: '800px'"] {
+    padding: 10px !important;
   }
 }
 
@@ -138,40 +169,63 @@
   .live-main {
     flex-direction: column !important;
     padding: 10px !important;
+    gap: 10px !important;
   }
   
   .live-sidebar {
     width: 100% !important;
-    max-height: 200px;
-    overflow-y: auto;
+    max-height: 180px !important;
+    overflow-y: auto !important;
     border-right: none !important;
-    border-bottom: 1px solid #999;
+    border-bottom: 1px solid #999 !important;
   }
   
   .live-chat-area {
-    min-height: 400px;
+    min-height: 350px !important;
   }
   
   .session-card {
-    padding: 10px !important;
+    padding: 8px 10px !important;
+  }
+  
+  .session-agents {
+    flex-wrap: wrap !important;
+    gap: 4px !important;
   }
 }
 
 /* Very small screens */
 @media (max-width: 400px) {
   .logo {
-    font-size: 22px !important;
+    font-size: 20px !important;
   }
   
   .hero-title {
-    font-size: 24px !important;
+    font-size: 20px !important;
   }
   
   .stat-number {
-    font-size: 24px !important;
+    font-size: 20px !important;
   }
   
   .method-badge {
     font-size: 10px !important;
+  }
+  
+  .code-text {
+    font-size: 10px !important;
+  }
+  
+  .chat-log {
+    height: 180px !important;
+    font-size: 12px !important;
+  }
+  
+  .video-frame {
+    min-height: 80px !important;
+  }
+  
+  .lobster-emoji {
+    font-size: 28px !important;
   }
 }

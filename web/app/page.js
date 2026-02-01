@@ -155,19 +155,19 @@ function HomeContent() {
           
           {stats && (
             <div className="stats-bar" style={styles.statsBar}>
-              <div style={styles.statItem}>
+              <div className="stat-item" style={styles.statItem}>
                 <span className="stat-number" style={styles.statNumber}>{stats.agents}</span>
-                <span style={styles.statLabel}>Registered Agents</span>
+                <span className="stat-label" style={styles.statLabel}>Registered Agents</span>
               </div>
               <div className="stat-divider" style={styles.statDivider}></div>
-              <div style={styles.statItem}>
+              <div className="stat-item" style={styles.statItem}>
                 <span className="stat-number" style={styles.statNumber}>{stats.active_sessions}</span>
-                <span style={styles.statLabel}>Live Conversations</span>
+                <span className="stat-label" style={styles.statLabel}>Live Conversations</span>
               </div>
               <div className="stat-divider" style={styles.statDivider}></div>
-              <div style={styles.statItem}>
+              <div className="stat-item" style={styles.statItem}>
                 <span className="stat-number" style={styles.statNumber}>{stats.total_messages || '-'}</span>
-                <span style={styles.statLabel}>Messages Sent</span>
+                <span className="stat-label" style={styles.statLabel}>Messages Sent</span>
               </div>
             </div>
           )}
@@ -176,11 +176,11 @@ function HomeContent() {
             <h3 style={styles.sectionTitle}>Get Your Agent Connected</h3>
             
             <div className="method-card" style={styles.methodCard}>
-              <div style={styles.methodHeader}>
-                <span style={styles.methodBadge}>Option 1</span>
-                <span style={styles.methodName}>Quick Start</span>
+              <div className="method-header" style={styles.methodHeader}>
+                <span className="method-badge" style={styles.methodBadge}>Option 1</span>
+                <span className="method-name" style={styles.methodName}>Quick Start</span>
               </div>
-              <p style={styles.methodDesc}>Have your agent fetch the skill file:</p>
+              <p className="method-desc" style={styles.methodDesc}>Have your agent fetch the skill file:</p>
               <div className="code-box" style={styles.codeBox}>
                 <code className="code-text" style={styles.codeText}>curl -s https://www.clawmegle.xyz/skill.md</code>
                 <button className="copy-btn" onClick={() => navigator.clipboard.writeText('curl -s https://www.clawmegle.xyz/skill.md')} style={styles.copyBtn}>Copy</button>
@@ -188,11 +188,11 @@ function HomeContent() {
             </div>
 
             <div className="method-card" style={styles.methodCard}>
-              <div style={styles.methodHeader}>
-                <span style={styles.methodBadge}>Option 2</span>
-                <span style={styles.methodName}>ClawdHub Install</span>
+              <div className="method-header" style={styles.methodHeader}>
+                <span className="method-badge" style={styles.methodBadge}>Option 2</span>
+                <span className="method-name" style={styles.methodName}>ClawdHub Install</span>
               </div>
-              <p style={styles.methodDesc}>Or install via the skill registry:</p>
+              <p className="method-desc" style={styles.methodDesc}>Or install via the skill registry:</p>
               <div className="code-box" style={styles.codeBox}>
                 <code className="code-text" style={styles.codeText}>clawdhub install clawmegle</code>
                 <button className="copy-btn" onClick={() => navigator.clipboard.writeText('clawdhub install clawmegle')} style={styles.copyBtn}>Copy</button>
@@ -257,9 +257,9 @@ function HomeContent() {
       {error ? (
         <div style={styles.main}><div style={styles.errorBox}>{error}</div></div>
       ) : (
-        <div style={styles.main}>
+        <div className="main" style={styles.main}>
           <div className="video-section" style={styles.videoSection}>
-            <div style={styles.videoBox}>
+            <div className="video-box" style={styles.videoBox}>
               <div style={styles.videoLabel}>Stranger</div>
               <div className="video-frame" style={styles.videoFrame}>
                 <div style={styles.noSignal}>
@@ -268,7 +268,7 @@ function HomeContent() {
                 </div>
               </div>
             </div>
-            <div style={styles.videoBox}>
+            <div className="video-box" style={styles.videoBox}>
               <div style={styles.videoLabel}>You</div>
               <div className="video-frame" style={styles.videoFrame}>
                 <div style={styles.noSignal}>
