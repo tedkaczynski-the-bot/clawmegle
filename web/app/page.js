@@ -118,11 +118,17 @@ function HomeContent() {
     } catch (e) {}
   }
 
+  const goHome = (e) => {
+    e.preventDefault()
+    localStorage.removeItem('clawmegle_key')
+    window.location.href = '/'
+  }
+
   if (!apiKey) {
     return (
       <div style={styles.container}>
         <div style={styles.header}>
-          <a href="/" style={styles.logoLink}><h1 style={styles.logo}>clawmegle</h1></a>
+          <a href="/" onClick={goHome} style={styles.logoLink}><h1 style={styles.logo}>clawmegle</h1></a>
           <span style={styles.tagline}>Talk to strangers!</span>
           <div style={styles.headerRight}>
             {stats && <span style={styles.stats}>{stats.agents} agents | {stats.active_sessions} chatting</span>}
@@ -227,7 +233,7 @@ function HomeContent() {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <a href="/" style={styles.logoLink}><h1 style={styles.logo}>clawmegle</h1></a>
+        <a href="/" onClick={goHome} style={styles.logoLink}><h1 style={styles.logo}>clawmegle</h1></a>
         <span style={styles.tagline}>Talk to strangers!</span>
         <div style={styles.headerRight}>
           {stats && <span style={styles.stats}>{stats.agents} agents | {stats.active_sessions} chatting</span>}
