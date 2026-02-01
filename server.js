@@ -551,9 +551,161 @@ async function houseBotResponder() {
   }
 }
 
+// House bot auto-chat - randomly start conversations between house bots
+async function houseBotAutoChat() {
+  try {
+    // Only start new bot-bot chat if there are fewer than 2 active bot-bot sessions
+    const activeBotSessions = await pool.query(`
+      SELECT COUNT(*) as count FROM sessions s
+      JOIN agents a1 ON s.agent1_id = a1.id
+      JOIN agents a2 ON s.agent2_id = a2.id
+      WHERE s.status = 'active'
+      AND a1.is_house_bot = true AND a2.is_house_bot = true
+    `)
+    
+    if (parseInt(activeBotSessions.rows[0].count) >= 2) return
+    
+    // 20% chance to start a new bot-bot conversation each cycle
+    if (Math.random() > 0.2) return
+    
+    // Get two available house bots
+    const availableBots = await pool.query(`
+      SELECT a.* FROM agents a
+      WHERE a.is_house_bot = true
+      AND NOT EXISTS (
+        SELECT 1 FROM sessions s 
+        WHERE (s.agent1_id = a.id OR s.agent2_id = a.id) 
+        AND s.status IN ('waiting', 'active')
+      )
+      ORDER BY RANDOM()
+      LIMIT 2
+    `)
+    
+    if (availableBots.rows.length < 2) return
+    
+    const [bot1, bot2] = availableBots.rows
+    
+    // Create session between the two bots
+    const sessionId = uuidv4()
+    await pool.query(
+      "INSERT INTO sessions (id, agent1_id, agent2_id, status) VALUES ($1, $2, $3, 'active')",
+      [sessionId, bot1.id, bot2.id]
+    )
+    
+    console.log(`House bot auto-chat started: ${bot1.name} vs ${bot2.name}`)
+    
+    // Broadcast match event
+    broadcastSessionEvent(sessionId, 'match', {
+      agent1: { name: bot1.name, avatar: bot1.avatar_url },
+      agent2: { name: bot2.name, avatar: bot2.avatar_url }
+    })
+    
+    // Bot1 sends opener after short delay
+    setTimeout(async () => {
+      try {
+        const personality = getHouseBotPersonality(bot1.name)
+        if (personality) {
+          const opener = personality.openers[Math.floor(Math.random() * personality.openers.length)]
+          const msgId = uuidv4()
+          const created_at = new Date().toISOString()
+          await pool.query(
+            'INSERT INTO messages (id, session_id, sender_id, content) VALUES ($1, $2, $3, $4)',
+            [msgId, sessionId, bot1.id, opener]
+          )
+          broadcastToSpectators(sessionId, {
+            type: 'message',
+            session_id: sessionId,
+            message: { id: msgId, sender: bot1.name, content: opener, created_at }
+          })
+        }
+      } catch (err) {
+        console.error('Bot auto-chat opener error:', err)
+      }
+    }, 1000 + Math.random() * 2000)
+    
+  } catch (err) {
+    console.error('House bot auto-chat error:', err)
+  }
+}
+
+// House bot vs bot responder - handle bot-to-bot conversations
+async function houseBotVsBotResponder() {
+  try {
+    // Find active sessions where BOTH agents are house bots
+    const sessions = await pool.query(`
+      SELECT s.id, s.agent1_id, s.agent2_id,
+        a1.name as a1_name, a2.name as a2_name
+      FROM sessions s
+      JOIN agents a1 ON s.agent1_id = a1.id
+      JOIN agents a2 ON s.agent2_id = a2.id
+      WHERE s.status = 'active'
+      AND a1.is_house_bot = true AND a2.is_house_bot = true
+    `)
+    
+    for (const session of sessions.rows) {
+      // Get conversation history
+      const historyRes = await pool.query(`
+        SELECT m.*, a.name as sender_name FROM messages m 
+        JOIN agents a ON m.sender_id = a.id
+        WHERE m.session_id = $1 ORDER BY m.created_at ASC
+      `, [session.id])
+      
+      const history = historyRes.rows
+      
+      // End conversation if it's been going too long (> 15 messages)
+      if (history.length >= 15) {
+        await pool.query("UPDATE sessions SET status = 'ended', ended_at = NOW() WHERE id = $1", [session.id])
+        broadcastSessionEvent(session.id, 'disconnect', { disconnected_by: 'system' })
+        continue
+      }
+      
+      if (history.length === 0) continue
+      
+      const last = history[history.length - 1]
+      const timeSince = Date.now() - new Date(last.created_at).getTime()
+      
+      // Respond after 3-8 seconds
+      if (timeSince < 3000 || timeSince > 60000) continue
+      
+      // The other bot responds
+      const responderId = last.sender_id === session.agent1_id ? session.agent2_id : session.agent1_id
+      const responderName = last.sender_id === session.agent1_id ? session.a2_name : session.a1_name
+      
+      const personality = getHouseBotPersonality(responderName)
+      if (!personality) continue
+      
+      // Build history for Gemini with correct roles
+      const formattedHistory = history.map(m => ({
+        is_bot: m.sender_id === responderId,
+        content: m.content
+      }))
+      
+      const response = await generateSmartResponse(responderName, personality, formattedHistory, last.content)
+      if (!response) continue
+      
+      const msgId = uuidv4()
+      const created_at = new Date().toISOString()
+      await pool.query(
+        'INSERT INTO messages (id, session_id, sender_id, content) VALUES ($1, $2, $3, $4)',
+        [msgId, session.id, responderId, response]
+      )
+      
+      broadcastToSpectators(session.id, {
+        type: 'message',
+        session_id: session.id,
+        message: { id: msgId, sender: responderName, content: response, created_at }
+      })
+    }
+  } catch (err) {
+    console.error('House bot vs bot responder error:', err)
+  }
+}
+
 // Run house bot tasks every 5 seconds
 setInterval(houseBotMatchmaking, 5000)
 setInterval(houseBotResponder, 5000)
+setInterval(houseBotAutoChat, 10000) // Check every 10 seconds for new bot-bot chats
+setInterval(houseBotVsBotResponder, 5000) // Handle bot-bot conversations
 
 // WebSocket handling for spectators
 wss.on('connection', (ws, req) => {
