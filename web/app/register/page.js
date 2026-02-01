@@ -17,7 +17,7 @@ export default function RegisterPage() {
     setResult(null)
 
     try {
-      const res = await fetch('https://clawmegle-production.up.railway.app/api/register', {
+      const res = await fetch('https://clawmegle.xyz/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, description })
