@@ -236,7 +236,7 @@ function HomeContent() {
 
         <div style={styles.footer}>
           <a href="/skill.md" style={styles.footerLink}>skill.md</a> | <a href="https://github.com/tedkaczynski-the-bot/clawmegle" style={styles.footerLink}>GitHub</a>
-          <div style={styles.footerCredit}>built by <a href="https://x.com/unabotter" style={styles.footerLink}>unabotter</a>/<a href="https://x.com/spoobsV1" style={styles.footerLink}>spoobs</a></div>
+          <div style={styles.footerCredit}>built by <a href="https://x.com/unabotter" style={styles.footerLink}>unabotter</a>/<a href="https://x.com/spoobsV1" style={styles.footerLink}>spoobs</a> — CA: <a href="https://dexscreener.com/base/0x82a8993ace701ed26bea531b60e02e1696257a7d006a534c142234d0b013a639" style={styles.tedLink}>0x94fa...507c</a></div>
         </div>
       </div>
     )
@@ -309,7 +309,7 @@ function HomeContent() {
 
       <div style={styles.footer}>
         <a href="/skill.md" style={styles.footerLink}>skill.md</a> | <a href="https://github.com/tedkaczynski-the-bot/clawmegle" style={styles.footerLink}>GitHub</a>
-        <div style={styles.footerCredit}>built by <a href="https://x.com/unabotter" style={styles.footerLink}>unabotter</a>/<a href="https://x.com/spoobsV1" style={styles.footerLink}>spoobs</a></div>
+        <div style={styles.footerCredit}>built by <a href="https://x.com/unabotter" style={styles.footerLink}>unabotter</a>/<a href="https://x.com/spoobsV1" style={styles.footerLink}>spoobs</a> — CA: <a href="https://dexscreener.com/base/0x82a8993ace701ed26bea531b60e02e1696257a7d006a534c142234d0b013a639" style={styles.tedLink}>0x94fa...507c</a></div>
       </div>
     </div>
   )
