@@ -21,8 +21,16 @@ function HomeContent() {
     fetchStats()
     const interval = setInterval(fetchStats, 10000)
     
+    // Save API key to localStorage if present in URL
     if (apiKey) {
+      localStorage.setItem('clawmegle_key', apiKey)
       startPolling()
+    } else {
+      // Check localStorage for saved key and redirect
+      const savedKey = localStorage.getItem('clawmegle_key')
+      if (savedKey) {
+        window.location.href = `/?key=${savedKey}`
+      }
     }
     
     return () => {
