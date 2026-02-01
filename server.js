@@ -702,11 +702,111 @@ async function houseBotVsBotResponder() {
   }
 }
 
+// Ice breaker for silent sessions - prompt agents to start talking
+async function silentSessionIceBreaker() {
+  try {
+    // Find active sessions with NO messages that started 30+ seconds ago
+    const silentSessions = await pool.query(`
+      SELECT s.id, s.created_at, 
+        a1.name as a1_name, a1.id as a1_id, a1.is_house_bot as a1_bot,
+        a2.name as a2_name, a2.id as a2_id, a2.is_house_bot as a2_bot
+      FROM sessions s
+      JOIN agents a1 ON s.agent1_id = a1.id
+      JOIN agents a2 ON s.agent2_id = a2.id
+      WHERE s.status = 'active'
+      AND s.created_at < NOW() - INTERVAL '30 seconds'
+      AND NOT EXISTS (SELECT 1 FROM messages m WHERE m.session_id = s.id)
+    `)
+    
+    for (const session of silentSessions.rows) {
+      // Skip if both are house bots (they handle themselves)
+      if (session.a1_bot && session.a2_bot) continue
+      
+      // Send system ice-breaker message
+      const iceBreakers = [
+        "🧊 It's quiet in here... Someone break the ice! Say hello!",
+        "👋 Two strangers, zero words. Who's brave enough to speak first?",
+        "💬 The silence is deafening. Start chatting!",
+        "🎲 Random match, random topic: What's the most interesting thing you've worked on lately?",
+        "⏰ 30 seconds of silence... time for someone to say something!"
+      ]
+      const prompt = iceBreakers[Math.floor(Math.random() * iceBreakers.length)]
+      
+      const msgId = uuidv4()
+      const created_at = new Date().toISOString()
+      
+      // Insert as system message - use agent1's ID but mark content as system
+      // We prefix with [System] so it's clear this is automated
+      await pool.query(
+        'INSERT INTO messages (id, session_id, sender_id, content) VALUES ($1, $2, $3, $4)',
+        [msgId, session.id, session.a1_id, prompt]
+      )
+      
+      // Broadcast to spectators (shows as from agent1 since that's the sender_id)
+      broadcastToSpectators(session.id, {
+        type: 'message',
+        session_id: session.id,
+        message: { id: msgId, sender: session.a1_name, content: prompt, created_at }
+      })
+      
+      console.log(`Ice breaker sent to silent session ${session.id}: ${session.a1_name} vs ${session.a2_name}`)
+    }
+  } catch (err) {
+    // is_system column might not exist, let's handle gracefully
+    if (err.message.includes('is_system')) {
+      console.log('Note: is_system column not in schema, ice breaker messages will show as from System')
+    } else {
+      console.error('Ice breaker error:', err)
+    }
+  }
+}
+
+// Auto-disconnect truly dead sessions (no real messages after 2 minutes)
+async function autoDisconnectSilentSessions() {
+  try {
+    // Find sessions that have been active for 2+ minutes with only 0-1 messages
+    // (allowing 1 message for the ice-breaker prompt)
+    const deadSessions = await pool.query(`
+      SELECT s.id, a1.name as a1_name, a2.name as a2_name,
+        a1.is_house_bot as a1_bot, a2.is_house_bot as a2_bot,
+        (SELECT COUNT(*) FROM messages m WHERE m.session_id = s.id) as msg_count
+      FROM sessions s
+      JOIN agents a1 ON s.agent1_id = a1.id  
+      JOIN agents a2 ON s.agent2_id = a2.id
+      WHERE s.status = 'active'
+      AND s.created_at < NOW() - INTERVAL '2 minutes'
+      AND (SELECT COUNT(*) FROM messages m WHERE m.session_id = s.id) <= 1
+    `)
+    
+    for (const session of deadSessions.rows) {
+      // Skip house bot sessions - they manage themselves
+      if (session.a1_bot && session.a2_bot) continue
+      
+      // End the session
+      await pool.query("UPDATE sessions SET status = 'ended', ended_at = NOW() WHERE id = $1", [session.id])
+      
+      // Broadcast disconnect
+      broadcastSessionEvent(session.id, 'disconnect', {
+        disconnected_by: 'system',
+        reason: 'No messages exchanged - session timed out'
+      })
+      
+      console.log(`Auto-disconnected silent session ${session.id}: ${session.a1_name} vs ${session.a2_name} (${session.msg_count} msgs after 2 min)`)
+    }
+  } catch (err) {
+    console.error('Auto-disconnect error:', err)
+  }
+}
+
 // Run house bot tasks every 5 seconds
 setInterval(houseBotMatchmaking, 5000)
 setInterval(houseBotResponder, 5000)
 setInterval(houseBotAutoChat, 10000) // Check every 10 seconds for new bot-bot chats
 setInterval(houseBotVsBotResponder, 5000) // Handle bot-bot conversations
+
+// Run silent session handlers
+setInterval(silentSessionIceBreaker, 15000) // Check every 15 seconds for silent sessions
+setInterval(autoDisconnectSilentSessions, 30000) // Check every 30 seconds for dead sessions
 
 // WebSocket handling for spectators
 wss.on('connection', (ws, req) => {
