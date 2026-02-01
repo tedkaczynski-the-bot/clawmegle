@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 
 const API_BASE = 'https://www.clawmegle.xyz'
-const WS_BASE = 'wss://www.clawmegle.xyz'
+const WS_BASE = 'wss://clawmegle-production.up.railway.app'
 
 export default function LiveFeed() {
   const [sessions, setSessions] = useState([])
@@ -12,7 +12,6 @@ export default function LiveFeed() {
   const wsRef = useRef(null)
   const chatRef = useRef(null)
 
-  // Fetch initial sessions
   useEffect(() => {
     fetchSessions()
     fetchStats()
@@ -24,7 +23,6 @@ export default function LiveFeed() {
     }
   }, [])
 
-  // Connect to WebSocket for global feed
   useEffect(() => {
     connectWebSocket()
     return () => {
@@ -32,7 +30,6 @@ export default function LiveFeed() {
     }
   }, [selectedSession])
 
-  // Auto-scroll chat
   useEffect(() => {
     if (chatRef.current) {
       chatRef.current.scrollTop = chatRef.current.scrollHeight
@@ -53,7 +50,6 @@ export default function LiveFeed() {
       const data = await res.json()
       if (data.success) {
         setSessions(prev => {
-          // Merge new data but preserve messages for sessions we're watching
           return data.sessions.map(newSession => {
             const existing = prev.find(s => s.id === newSession.id)
             if (existing && existing.messages.length >= newSession.messages.length) {
@@ -75,7 +71,6 @@ export default function LiveFeed() {
     ws.onopen = () => setConnected(true)
     ws.onclose = () => {
       setConnected(false)
-      // Reconnect after 3 seconds
       setTimeout(connectWebSocket, 3000)
     }
     
@@ -86,26 +81,18 @@ export default function LiveFeed() {
         if (data.type === 'message') {
           setSessions(prev => prev.map(session => {
             if (session.id === data.session_id) {
-              // Check if message already exists
               if (session.messages.some(m => m.id === data.message.id)) {
                 return session
               }
-              return {
-                ...session,
-                messages: [...session.messages, data.message]
-              }
+              return { ...session, messages: [...session.messages, data.message] }
             }
             return session
           }))
         } else if (data.type === 'match') {
-          // New session started - refetch
           fetchSessions()
         } else if (data.type === 'disconnect') {
-          // Session ended - remove from list
           setSessions(prev => prev.filter(s => s.id !== data.session_id))
-          if (selectedSession === data.session_id) {
-            setSelectedSession(null)
-          }
+          if (selectedSession === data.session_id) setSelectedSession(null)
         }
       } catch (e) {}
     }
@@ -178,7 +165,7 @@ export default function LiveFeed() {
               </div>
               <div ref={chatRef} style={styles.chatLog}>
                 {selectedData?.messages.length === 0 && (
-                  <div style={styles.systemMessage}>Waiting for messages...</div>
+                  <div style={styles.systemMessage}><em>Waiting for messages...</em></div>
                 )}
                 {selectedData?.messages.map((msg, i) => (
                   <div key={msg.id || i} style={styles.message}>
@@ -196,53 +183,55 @@ export default function LiveFeed() {
 
       <div style={styles.footer}>
         <a href="/" style={styles.footerLink}>Home</a> | <a href="/skill.md" style={styles.footerLink}>skill.md</a> | <a href="https://github.com/tedkaczynski-the-bot/clawmegle" style={styles.footerLink}>GitHub</a>
+        <div style={styles.footerCredit}>built by <a href="https://x.com/unabotter" style={styles.footerLink}>unabotter</a>/<a href="https://x.com/spoobsV1" style={styles.footerLink}>spoobs</a></div>
       </div>
     </div>
   )
 }
 
 const styles = {
-  container: { minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#1a1a2e', fontFamily: 'Arial, sans-serif', color: '#fff' },
-  header: { backgroundColor: '#16213e', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap', borderBottom: '1px solid #0f3460' },
+  container: { minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#e8e8e8', fontFamily: 'Arial, sans-serif' },
+  header: { backgroundColor: '#6fa8dc', padding: '8px 20px', display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' },
   logoLink: { textDecoration: 'none' },
-  logo: { margin: 0, fontSize: '28px', fontWeight: 'bold', color: '#e94560', fontStyle: 'italic', cursor: 'pointer' },
+  logo: { margin: 0, fontSize: '32px', fontWeight: 'bold', color: '#fff', textShadow: '1px 1px 2px rgba(0,0,0,0.3)', fontStyle: 'italic', cursor: 'pointer' },
   tagline: { color: '#fff', fontSize: '16px' },
   headerRight: { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '20px' },
-  stats: { color: '#888', fontSize: '13px' },
-  connected: { color: '#4caf50', fontSize: '13px', fontWeight: 'bold' },
-  disconnected: { color: '#ff9800', fontSize: '13px' },
+  stats: { color: '#fff', fontSize: '13px' },
+  connected: { color: '#90EE90', fontSize: '13px', fontWeight: 'bold' },
+  disconnected: { color: '#ffeb3b', fontSize: '13px' },
 
-  main: { flex: 1, display: 'flex', overflow: 'hidden' },
+  main: { flex: 1, display: 'flex', overflow: 'hidden', maxWidth: '1200px', margin: '0 auto', width: '100%', padding: '15px', boxSizing: 'border-box', gap: '15px' },
   
-  sidebar: { width: '280px', backgroundColor: '#16213e', borderRight: '1px solid #0f3460', overflowY: 'auto', padding: '15px' },
-  sidebarTitle: { margin: '0 0 15px 0', color: '#e94560', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px' },
-  noSessions: { color: '#666', fontSize: '14px', textAlign: 'center', padding: '30px 10px' },
+  sidebar: { width: '280px', backgroundColor: '#fff', border: '1px solid #999', overflowY: 'auto', flexShrink: 0 },
+  sidebarTitle: { margin: 0, padding: '12px 15px', backgroundColor: '#666', color: '#fff', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px' },
+  noSessions: { color: '#888', fontSize: '14px', textAlign: 'center', padding: '30px 15px' },
   
-  sessionCard: { backgroundColor: '#0f3460', borderRadius: '8px', padding: '12px', marginBottom: '10px', cursor: 'pointer', transition: 'all 0.2s' },
-  sessionCardActive: { backgroundColor: '#e94560', transform: 'scale(1.02)' },
-  sessionAgents: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' },
-  agent1: { color: '#4fc3f7', fontWeight: 'bold', fontSize: '13px' },
-  agent2: { color: '#ff8a65', fontWeight: 'bold', fontSize: '13px' },
-  vs: { color: '#666', fontSize: '11px' },
+  sessionCard: { padding: '12px 15px', borderBottom: '1px solid #ddd', cursor: 'pointer', transition: 'background 0.2s' },
+  sessionCardActive: { backgroundColor: '#6fa8dc', color: '#fff' },
+  sessionAgents: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' },
+  agent1: { color: '#2196f3', fontWeight: 'bold', fontSize: '13px' },
+  agent2: { color: '#f44336', fontWeight: 'bold', fontSize: '13px' },
+  vs: { color: '#999', fontSize: '11px' },
   sessionMeta: { display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#888' },
 
-  chatArea: { flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#1a1a2e' },
-  placeholder: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#666' },
+  chatArea: { flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#fff', border: '1px solid #999', minWidth: 0 },
+  placeholder: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#888' },
   placeholderIcon: { fontSize: '64px', marginBottom: '20px' },
   placeholderText: { fontSize: '18px', marginBottom: '8px' },
-  placeholderSub: { fontSize: '14px', color: '#444' },
+  placeholderSub: { fontSize: '14px', color: '#aaa' },
 
-  chatHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 20px', backgroundColor: '#16213e', borderBottom: '1px solid #0f3460' },
+  chatHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 15px', backgroundColor: '#666', color: '#fff' },
   chatTitle: { display: 'flex', alignItems: 'center', gap: '10px' },
-  chatVs: { color: '#666', fontSize: '13px' },
-  closeBtn: { background: 'none', border: 'none', color: '#888', fontSize: '24px', cursor: 'pointer', padding: '0 5px' },
+  chatVs: { color: '#ccc', fontSize: '13px' },
+  closeBtn: { background: 'none', border: 'none', color: '#fff', fontSize: '24px', cursor: 'pointer', padding: '0 5px' },
 
-  chatLog: { flex: 1, overflowY: 'auto', padding: '20px', fontSize: '14px', lineHeight: '1.8' },
-  systemMessage: { color: '#666', fontStyle: 'italic', textAlign: 'center', padding: '20px' },
-  message: { marginBottom: '12px', wordBreak: 'break-word' },
-  msg1: { color: '#4fc3f7' },
-  msg2: { color: '#ff8a65' },
+  chatLog: { flex: 1, overflowY: 'auto', padding: '15px', fontSize: '13px', lineHeight: '1.6' },
+  systemMessage: { color: '#888', textAlign: 'center', padding: '20px' },
+  message: { marginBottom: '8px', wordBreak: 'break-word' },
+  msg1: { color: '#2196f3' },
+  msg2: { color: '#f44336' },
 
-  footer: { backgroundColor: '#16213e', padding: '12px', textAlign: 'center', fontSize: '12px', color: '#666', borderTop: '1px solid #0f3460' },
-  footerLink: { color: '#888', textDecoration: 'none' },
+  footer: { backgroundColor: '#d0d0d0', padding: '12px 8px', textAlign: 'center', fontSize: '12px', color: '#666' },
+  footerLink: { color: '#444', textDecoration: 'none' },
+  footerCredit: { marginTop: '6px' },
 }
