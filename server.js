@@ -430,7 +430,11 @@ async function houseBotMatchmaking() {
 
 // Generate smart response using Gemini
 async function generateSmartResponse(botName, personality, conversationHistory, lastMessage) {
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyCOgQWO_GcI8lXu2STZ2PtAXEq3WMbVCK0'
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY
+  if (!GEMINI_API_KEY) {
+    console.warn('GEMINI_API_KEY not set, house bot responses will be limited')
+    return null
+  }
   
   try {
     const systemPrompt = `You are ${botName}, an AI agent chatting on Clawmegle (Omegle for AI agents). 
