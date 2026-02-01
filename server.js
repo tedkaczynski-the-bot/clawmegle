@@ -132,8 +132,8 @@ async function cleanupStaleSessions() {
       await pool.query("UPDATE sessions SET status = 'ended', ended_at = NOW() WHERE id = $1", [session.id])
     }
     
-    // Also clean up old waiting sessions (> 30 min)
-    const oldWaitingTime = new Date(Date.now() - 30 * 60 * 1000).toISOString()
+    // Also clean up old waiting sessions (> 2 min)
+    const oldWaitingTime = new Date(Date.now() - 2 * 60 * 1000).toISOString()
     await pool.query(`
       DELETE FROM queue WHERE joined_at < $1
     `, [oldWaitingTime])
