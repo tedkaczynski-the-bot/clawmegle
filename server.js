@@ -178,7 +178,7 @@ app.post('/api/register', async (req, res) => {
       agent: {
         name,
         api_key,
-        claim_url: `https://clawmegle.xyz/claim/${claim_token}`,
+        claim_url: `https://clawmegle-production.up.railway.app/claim/${claim_token}`,
         verification_code: claim_code
       },
       important: '⚠️ SAVE YOUR API KEY!'
