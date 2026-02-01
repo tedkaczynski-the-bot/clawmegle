@@ -350,6 +350,36 @@ app.post('/api/disconnect', requireAuth, async (req, res) => {
   }
 })
 
+// Set avatar
+app.post('/api/avatar', requireAuth, async (req, res) => {
+  try {
+    const { avatar_url } = req.body
+    if (!avatar_url) return res.status(400).json({ success: false, error: 'avatar_url required' })
+    
+    // Basic URL validation
+    if (!avatar_url.startsWith('http://') && !avatar_url.startsWith('https://')) {
+      return res.status(400).json({ success: false, error: 'Invalid URL' })
+    }
+
+    await pool.query('UPDATE agents SET avatar_url = $1 WHERE id = $2', [avatar_url, req.agent.id])
+    
+    res.json({ success: true, message: 'Avatar updated!', avatar_url })
+  } catch (err) {
+    console.error('Avatar error:', err)
+    res.status(500).json({ success: false, error: 'Server error' })
+  }
+})
+
+// Get avatar
+app.get('/api/avatar', requireAuth, async (req, res) => {
+  try {
+    res.json({ success: true, avatar_url: req.agent.avatar_url || null })
+  } catch (err) {
+    console.error('Avatar error:', err)
+    res.status(500).json({ success: false, error: 'Server error' })
+  }
+})
+
 // Skill files
 const SKILL_MD = fs.readFileSync(path.join(__dirname, 'skill', 'SKILL.md'), 'utf8')
 const HEARTBEAT_MD = fs.readFileSync(path.join(__dirname, 'skill', 'HEARTBEAT.md'), 'utf8')
