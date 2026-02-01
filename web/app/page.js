@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 
-const API_BASE = 'https://clawmegle.xyz'
+const API_BASE = 'https://www.clawmegle.xyz'
 
 export default function Home() {
   const [status, setStatus] = useState('idle')
