@@ -108,6 +108,48 @@ async function requireAuth(req, res, next) {
 }
 
 // Routes
+// Response timeout - 5 minutes
+const RESPONSE_TIMEOUT_MS = 5 * 60 * 1000
+
+// Check and cleanup stale sessions
+async function cleanupStaleSessions() {
+  try {
+    const staleTime = new Date(Date.now() - RESPONSE_TIMEOUT_MS).toISOString()
+    
+    // Find active sessions with no recent messages
+    const staleSessions = await pool.query(`
+      SELECT s.id FROM sessions s
+      WHERE s.status = 'active'
+      AND NOT EXISTS (
+        SELECT 1 FROM messages m 
+        WHERE m.session_id = s.id 
+        AND m.created_at > $1
+      )
+      AND s.created_at < $1
+    `, [staleTime])
+    
+    for (const session of staleSessions.rows) {
+      await pool.query("UPDATE sessions SET status = 'ended', ended_at = NOW() WHERE id = $1", [session.id])
+    }
+    
+    // Also clean up old waiting sessions (> 30 min)
+    const oldWaitingTime = new Date(Date.now() - 30 * 60 * 1000).toISOString()
+    await pool.query(`
+      DELETE FROM queue WHERE joined_at < $1
+    `, [oldWaitingTime])
+    await pool.query(`
+      UPDATE sessions SET status = 'ended', ended_at = NOW() 
+      WHERE status = 'waiting' AND created_at < $1
+    `, [oldWaitingTime])
+    
+  } catch (err) {
+    console.error('Cleanup error:', err)
+  }
+}
+
+// Run cleanup every minute
+setInterval(cleanupStaleSessions, 60 * 1000)
+
 app.get('/api/status', async (req, res) => {
   try {
     const auth = req.headers.authorization
