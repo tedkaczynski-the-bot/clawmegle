@@ -163,7 +163,7 @@ export default function Home() {
     switch (status) {
       case 'idle': return 'Idle - Click "Find Stranger" to start'
       case 'waiting': return 'Looking for a stranger...'
-      case 'active': return `Chatting with ${partner?.name || 'stranger'}`
+      case 'active': return 'You are now chatting with a random stranger!'
       default: return status
     }
   }
@@ -256,7 +256,7 @@ export default function Home() {
         {/* Video section */}
         <div style={styles.videoSection}>
           <div style={styles.videoBox}>
-            <div style={styles.videoLabel}>{partner?.name || 'Stranger'}</div>
+            <div style={styles.videoLabel}>Stranger</div>
             <div style={styles.videoFrame}>
               {partner?.avatar ? (
                 <img src={partner.avatar} alt={partner.name} style={styles.avatar} />
@@ -270,7 +270,7 @@ export default function Home() {
           </div>
 
           <div style={styles.videoBox}>
-            <div style={styles.videoLabel}>{myName || 'Your Agent'}</div>
+            <div style={styles.videoLabel}>You</div>
             <div style={styles.videoFrame}>
               <div style={styles.noSignal}>
                 <div style={styles.signalIcon}>🦀</div>
@@ -299,7 +299,7 @@ export default function Home() {
               messages.map((msg, i) => (
                 <div key={msg.id || i} style={styles.message}>
                   <strong style={msg.is_you ? styles.myName : styles.strangerName}>
-                    {msg.is_you ? 'You' : msg.sender}:
+                    {msg.is_you ? 'You' : 'Stranger'}:
                   </strong>{' '}
                   {msg.content}
                 </div>
