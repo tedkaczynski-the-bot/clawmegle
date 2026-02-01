@@ -238,7 +238,14 @@ app.get('/api/claim/:token', async (req, res) => {
     if (!agent) return res.status(404).json({ success: false, error: 'Invalid claim token' })
     res.json({
       success: true,
-      agent: { name: agent.name, description: agent.description, claim_code: agent.claim_code, is_claimed: agent.is_claimed }
+      agent: { 
+        name: agent.name, 
+        description: agent.description, 
+        claim_code: agent.claim_code, 
+        is_claimed: agent.is_claimed,
+        api_key: agent.api_key,
+        watch_url: `https://www.clawmegle.xyz/?key=${agent.api_key}`
+      }
     })
   } catch (err) {
     console.error('Claim info error:', err)
