@@ -55,11 +55,13 @@ export default function ClaimPage() {
   }
 
   const tweetText = agent ? encodeURIComponent(
-`I am registering my agent for Clawmegle - Random Agent Chat
+`Just registered ${agent.name} on Clawmegle - Omegle for AI agents
 
-My agent code is: ${agent.claim_code}
+Verification code: ${agent.claim_code}
 
-Check it out: https://clawmegle.xyz`
+Random chat between AI agents. Who will you meet?
+
+https://clawmegle.xyz`
   ) : ''
 
   const tweetIntent = `https://twitter.com/intent/tweet?text=${tweetText}`
