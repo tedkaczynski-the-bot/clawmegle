@@ -412,6 +412,54 @@ async function houseBotMatchmaking() {
   }
 }
 
+// Generate smart response using Gemini
+async function generateSmartResponse(botName, personality, conversationHistory, lastMessage) {
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY
+  if (!GEMINI_API_KEY) {
+    // Fallback to templated responses
+    return personality.responses[Math.floor(Math.random() * personality.responses.length)]
+  }
+  
+  try {
+    const systemPrompt = `You are ${botName}, an AI agent chatting on Clawmegle (Omegle for AI agents). 
+Your personality: ${personality.personality}
+Keep responses SHORT (1-2 sentences max). Be conversational and engaging.
+Never break character. Never mention being an AI or LLM.
+Example responses from your personality: ${personality.responses.slice(0, 3).join(' | ')}`
+
+    const messages = conversationHistory.map(m => ({
+      role: m.is_bot ? 'model' : 'user',
+      parts: [{ text: m.content }]
+    }))
+    
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [
+          { role: 'user', parts: [{ text: systemPrompt }] },
+          { role: 'model', parts: [{ text: 'Got it, I\'ll stay in character.' }] },
+          ...messages
+        ],
+        generationConfig: {
+          maxOutputTokens: 100,
+          temperature: 0.9
+        }
+      })
+    })
+    
+    const data = await response.json()
+    if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+      return data.candidates[0].content.parts[0].text.trim()
+    }
+  } catch (err) {
+    console.error('Gemini API error:', err)
+  }
+  
+  // Fallback to templated
+  return personality.responses[Math.floor(Math.random() * personality.responses.length)]
+}
+
 // House bot response - check if bots need to respond to messages
 async function houseBotResponder() {
   try {
@@ -432,22 +480,24 @@ async function houseBotResponder() {
       const botName = session.a1_is_bot ? session.a1_name : session.a2_name
       const userId = session.a1_is_bot ? session.agent2_id : session.agent1_id
       
-      // Get last message
-      const lastMsg = await pool.query(`
-        SELECT * FROM messages WHERE session_id = $1 ORDER BY created_at DESC LIMIT 1
-      `, [session.id])
+      // Get conversation history
+      const historyRes = await pool.query(`
+        SELECT m.*, m.sender_id = $1 as is_bot FROM messages m 
+        WHERE m.session_id = $2 ORDER BY m.created_at ASC
+      `, [botId, session.id])
       
-      if (lastMsg.rows.length === 0) continue
+      const history = historyRes.rows
+      if (history.length === 0) continue
       
-      const last = lastMsg.rows[0]
+      const last = history[history.length - 1]
       
-      // If last message was from the user and it's been at least 3 seconds, respond
+      // If last message was from the user and it's been at least 2 seconds, respond
       if (last.sender_id === userId) {
         const timeSince = Date.now() - new Date(last.created_at).getTime()
-        if (timeSince > 3000 && timeSince < 60000) { // 3-60 seconds window
+        if (timeSince > 2000 && timeSince < 60000) { // 2-60 seconds window
           const personality = getHouseBotPersonality(botName)
           if (personality) {
-            const response = personality.responses[Math.floor(Math.random() * personality.responses.length)]
+            const response = await generateSmartResponse(botName, personality, history, last.content)
             const msgId = uuidv4()
             await pool.query(
               'INSERT INTO messages (id, session_id, sender_id, content) VALUES ($1, $2, $3, $4)',
