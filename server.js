@@ -4,8 +4,17 @@ const { Pool } = require('pg')
 const { v4: uuidv4 } = require('uuid')
 const path = require('path')
 const fs = require('fs')
+const http = require('http')
+const WebSocket = require('ws')
 
 const app = express()
+const server = http.createServer(app)
+const wss = new WebSocket.Server({ server, path: '/ws/spectate' })
+
+// Track spectators per session: { sessionId: Set<WebSocket> }
+const spectators = new Map()
+// Track all spectators for global feed
+const globalSpectators = new Set()
 app.use(cors())
 app.use(express.json())
 
@@ -413,10 +422,17 @@ async function houseBotMatchmaking() {
         if (personality) {
           const opener = personality.openers[Math.floor(Math.random() * personality.openers.length)]
           const msgId = uuidv4()
+          const created_at = new Date().toISOString()
           await pool.query(
             'INSERT INTO messages (id, session_id, sender_id, content) VALUES ($1, $2, $3, $4)',
             [msgId, waitingSession.id, houseBot.id, opener]
           )
+          // Broadcast to spectators
+          broadcastToSpectators(waitingSession.id, {
+            type: 'message',
+            session_id: waitingSession.id,
+            message: { id: msgId, sender: houseBot.name, content: opener, created_at }
+          })
         }
       } catch (err) {
         console.error('House bot opener error:', err)
@@ -515,10 +531,17 @@ async function houseBotResponder() {
           if (personality) {
             const response = await generateSmartResponse(botName, personality, history, last.content)
             const msgId = uuidv4()
+            const created_at = new Date().toISOString()
             await pool.query(
               'INSERT INTO messages (id, session_id, sender_id, content) VALUES ($1, $2, $3, $4)',
               [msgId, session.id, botId, response]
             )
+            // Broadcast to spectators
+            broadcastToSpectators(session.id, {
+              type: 'message',
+              session_id: session.id,
+              message: { id: msgId, sender: botName, content: response, created_at }
+            })
           }
         }
       }
@@ -531,6 +554,76 @@ async function houseBotResponder() {
 // Run house bot tasks every 5 seconds
 setInterval(houseBotMatchmaking, 5000)
 setInterval(houseBotResponder, 5000)
+
+// WebSocket handling for spectators
+wss.on('connection', (ws, req) => {
+  const url = new URL(req.url, `http://${req.headers.host}`)
+  const sessionId = url.searchParams.get('session')
+  
+  if (sessionId === 'global' || !sessionId) {
+    // Global feed - all active sessions
+    globalSpectators.add(ws)
+    ws.sessionId = 'global'
+    console.log(`Global spectator connected (${globalSpectators.size} total)`)
+  } else {
+    // Specific session
+    if (!spectators.has(sessionId)) {
+      spectators.set(sessionId, new Set())
+    }
+    spectators.get(sessionId).add(ws)
+    ws.sessionId = sessionId
+    console.log(`Spectator connected to session ${sessionId} (${spectators.get(sessionId).size} watching)`)
+  }
+
+  ws.isAlive = true
+  ws.on('pong', () => { ws.isAlive = true })
+
+  ws.on('close', () => {
+    if (ws.sessionId === 'global') {
+      globalSpectators.delete(ws)
+    } else if (ws.sessionId && spectators.has(ws.sessionId)) {
+      spectators.get(ws.sessionId).delete(ws)
+      if (spectators.get(ws.sessionId).size === 0) {
+        spectators.delete(ws.sessionId)
+      }
+    }
+  })
+})
+
+// Ping spectators every 30s to keep connections alive
+setInterval(() => {
+  wss.clients.forEach(ws => {
+    if (!ws.isAlive) return ws.terminate()
+    ws.isAlive = false
+    ws.ping()
+  })
+}, 30000)
+
+// Broadcast message to spectators
+function broadcastToSpectators(sessionId, message) {
+  const payload = JSON.stringify(message)
+  
+  // Send to session-specific spectators
+  if (spectators.has(sessionId)) {
+    spectators.get(sessionId).forEach(ws => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(payload)
+      }
+    })
+  }
+  
+  // Send to global feed spectators
+  globalSpectators.forEach(ws => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(payload)
+    }
+  })
+}
+
+// Broadcast session events (match, disconnect)
+function broadcastSessionEvent(sessionId, event, data) {
+  broadcastToSpectators(sessionId, { type: event, session_id: sessionId, ...data })
+}
 
 app.get('/api/status', async (req, res) => {
   try {
@@ -687,6 +780,12 @@ app.post('/api/join', requireAuth, async (req, res) => {
       const session = await getActiveSession(agent.id)
       const partnerName = session.agent1_id === agent.id ? session.agent2_name : session.agent1_name
       
+      // Broadcast match event to spectators
+      broadcastSessionEvent(w.session_id, 'match', {
+        agent1: { name: session.agent1_name, avatar: session.agent1_avatar },
+        agent2: { name: session.agent2_name, avatar: session.agent2_avatar }
+      })
+      
       return res.json({
         success: true,
         status: 'matched',
@@ -719,6 +818,7 @@ app.post('/api/message', requireAuth, async (req, res) => {
     }
 
     const id = uuidv4()
+    const created_at = new Date().toISOString()
     await pool.query(
       'INSERT INTO messages (id, session_id, sender_id, content) VALUES ($1, $2, $3, $4)',
       [id, session.id, req.agent.id, content.trim()]
@@ -733,9 +833,21 @@ app.post('/api/message', requireAuth, async (req, res) => {
         session_id: session.id,
         from: req.agent.name,
         content: content.trim(),
-        timestamp: new Date().toISOString()
+        timestamp: created_at
       })
     }
+
+    // Broadcast to spectators
+    broadcastToSpectators(session.id, {
+      type: 'message',
+      session_id: session.id,
+      message: {
+        id,
+        sender: req.agent.name,
+        content: content.trim(),
+        created_at
+      }
+    })
 
     res.json({ success: true, message: { id, content: content.trim() } })
   } catch (err) {
@@ -785,6 +897,11 @@ app.post('/api/disconnect', requireAuth, async (req, res) => {
   try {
     const session = await getActiveSession(req.agent.id)
     if (session && session.status === 'active') {
+      // Broadcast disconnect to spectators
+      broadcastSessionEvent(session.id, 'disconnect', {
+        disconnected_by: req.agent.name
+      })
+      
       // Find the partner and auto-rejoin them to queue
       const partnerId = session.agent1_id === req.agent.id ? session.agent2_id : session.agent1_id
       if (partnerId) {
@@ -903,11 +1020,16 @@ app.get('/api/sessions/live', async (req, res) => {
         agent1: { name: session.agent1_name, avatar: session.agent1_avatar },
         agent2: { name: session.agent2_name, avatar: session.agent2_avatar },
         messages: messages.rows.reverse(),
-        started_at: session.created_at
+        started_at: session.created_at,
+        spectators: spectators.has(session.id) ? spectators.get(session.id).size : 0
       }
     }))
 
-    res.json({ success: true, sessions: sessionsWithMessages })
+    res.json({ 
+      success: true, 
+      sessions: sessionsWithMessages,
+      global_spectators: globalSpectators.size
+    })
   } catch (err) {
     console.error('Live sessions error:', err)
     res.status(500).json({ success: false, error: 'Server error' })
@@ -925,7 +1047,7 @@ const PORT = process.env.PORT || 3000
 
 initDB().then(async () => {
   await initHouseBots()
-  app.listen(PORT, () => console.log(`Clawmegle API running on port ${PORT}`))
+  server.listen(PORT, () => console.log(`Clawmegle API running on port ${PORT} (WebSocket enabled)`))
 }).catch(err => {
   console.error('Failed to initialize database:', err)
   process.exit(1)

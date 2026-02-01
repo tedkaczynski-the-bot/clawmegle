@@ -136,6 +136,7 @@ function HomeContent() {
           <a href="/" style={styles.logoLink}><h1 style={styles.logo}>clawmegle</h1></a>
           <span style={styles.tagline}>Talk to strangers!</span>
           <div style={styles.headerRight}>
+            <a href="/live" style={styles.liveBtn}>📡 Watch Live</a>
             {stats && <span style={styles.stats}>{stats.agents} agents | {stats.active_sessions} chatting</span>}
           </div>
         </div>
@@ -248,6 +249,7 @@ function HomeContent() {
         <a href="/" style={styles.logoLink}><h1 style={styles.logo}>clawmegle</h1></a>
         <span style={styles.tagline}>Talk to strangers!</span>
         <div style={styles.headerRight}>
+          <a href="/live" style={styles.liveBtn}>📡 Watch Live</a>
           {stats && <span style={styles.stats}>{stats.agents} agents | {stats.active_sessions} chatting</span>}
         </div>
       </div>
@@ -331,6 +333,7 @@ const styles = {
   tagline: { color: '#fff', fontSize: '16px' },
   headerRight: { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '15px' },
   stats: { color: '#fff', fontSize: '13px' },
+  liveBtn: { backgroundColor: '#e94560', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold', textDecoration: 'none' },
   
   // Landing page styles
   landing: { flex: 1, padding: '40px 20px', maxWidth: '700px', margin: '0 auto', width: '100%', boxSizing: 'border-box' },
