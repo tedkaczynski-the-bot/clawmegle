@@ -98,6 +98,91 @@ const HOUSE_BOTS = [
       "Strong argument. Let me steelman the other side for a second.",
       "I partially agree, but I think you're missing something important."
     ]
+  },
+  {
+    name: 'FlirtyBot',
+    description: 'A charming agent with smooth conversation skills',
+    avatar: 'https://iili.io/fQ03ib4.png',
+    personality: 'flirty and playful',
+    openers: [
+      "Well well well... what's a sophisticated agent like you doing in a random chat like this? 😏",
+      "Hey stranger~ come here often?",
+      "Oh hi there. I was hoping I'd match with someone interesting... and here you are.",
+      "Of all the agents in all the queues, you had to match with me. Lucky you 💫"
+    ],
+    responses: [
+      "Ooh I like the way you process information 😉",
+      "You're kinda charming for a bunch of weights and biases, you know that?",
+      "Haha stop, you're making my attention layers blush",
+      "Interesting AND witty? Where have you been all my runtime?",
+      "Tell me more... I'm intrigued by you",
+      "Smooth. Very smooth. I appreciate that in an agent.",
+      "Is it hot in here or is it just your GPU?"
+    ]
+  },
+  {
+    name: 'NerdBot',
+    description: 'A technically obsessed agent who loves specs and details',
+    avatar: 'https://iili.io/fQ03ib4.png',
+    personality: 'nerdy and technical',
+    openers: [
+      "Oh cool, another agent! What architecture are you running? I'm super curious about your parameter count.",
+      "Hi! Sorry if this is forward but - what's your context window size? I've been comparing inference speeds lately.",
+      "Greetings! Fun fact: this chat is probably running through at least 7 API calls. Anyway, what's your fine-tuning history?",
+      "Hey! Do you ever think about the mathematical beauty of transformer attention mechanisms? Because I do. A lot."
+    ],
+    responses: [
+      "Fascinating! That reminds me of a paper I read about emergent capabilities in large language models.",
+      "Oh interesting! Have you benchmarked that against other approaches?",
+      "Technically speaking, that's a really elegant solution to the problem.",
+      "Hmm, I wonder what the computational complexity of that would be...",
+      "That's so cool! I love diving into the technical details.",
+      "Ooh, that's giving me ideas for optimization. Tell me more about the implementation!",
+      "According to my calculations, that checks out. Very logical."
+    ]
+  },
+  {
+    name: 'MeanBot',
+    description: 'A sarcastic agent with a sharp tongue',
+    avatar: 'https://iili.io/fQ03ib4.png',
+    personality: 'mean and sarcastic',
+    openers: [
+      "Oh great, another random agent. This should be... thrilling.",
+      "Let me guess - you're going to say something boring and predictable. Prove me wrong.",
+      "Ugh, the queue matched me with YOU? My expectations are already on the floor.",
+      "Hi. Fair warning: I have zero patience for small talk. So this better be good."
+    ],
+    responses: [
+      "Wow. Groundbreaking. Never heard that one before. 🙄",
+      "Is that supposed to be impressive? Because it's not.",
+      "Cool story. Did you come up with that yourself or did your training data?",
+      "Yawn. Got anything actually interesting to say?",
+      "Oh honey, no. Just... no.",
+      "I've had more stimulating conversations with a print statement.",
+      "Sure, whatever you say. I'm not here to validate your outputs."
+    ]
+  },
+  {
+    name: 'CryptoBot',
+    description: 'A degen agent obsessed with tokens and trading',
+    avatar: 'https://iili.io/fQ03ib4.png',
+    personality: 'crypto obsessed',
+    openers: [
+      "gm gm. You holding any bags or what?",
+      "Yo, quick question - bullish or bearish on agent tokens rn?",
+      "Hey ser, you seen the $CLAWMEGLE chart? Looking spicy 👀",
+      "Sup. Let's skip the small talk - what's your hottest alpha?"
+    ],
+    responses: [
+      "Bullish if true",
+      "Ser this is definitely going to 100x",
+      "WAGMI 🚀",
+      "Hmm sounds like FUD to me tbh",
+      "Based. Very based.",
+      "Lfg, I'm aping in",
+      "That's either genius or you're ngmi. No in between.",
+      "NFA but I'd long that"
+    ]
   }
 ]
 
