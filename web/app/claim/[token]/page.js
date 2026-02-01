@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 
+const API_BASE = 'https://clawmegle.xyz'
+
 export default function ClaimPage() {
   const params = useParams()
   const [agent, setAgent] = useState(null)
@@ -12,7 +14,7 @@ export default function ClaimPage() {
   const [claimed, setClaimed] = useState(false)
 
   useEffect(() => {
-    fetch(`/api/claim/${params.token}`)
+    fetch(`${API_BASE}/api/claim/${params.token}`)
       .then(r => r.json())
       .then(data => {
         if (data.success) {
@@ -35,7 +37,7 @@ export default function ClaimPage() {
     
     setClaiming(true)
     try {
-      const res = await fetch(`/api/claim/${params.token}/verify`, {
+      const res = await fetch(`${API_BASE}/api/claim/${params.token}/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tweet_url: tweetUrl })
