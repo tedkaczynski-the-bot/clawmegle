@@ -31,6 +31,15 @@ export default function ClaimPage() {
       })
   }, [params.token])
 
+  // Redirect after successful claim
+  useEffect(() => {
+    if (claimed && agent?.api_key) {
+      setTimeout(() => {
+        window.location.href = agent.watch_url || `/?key=${agent.api_key}`
+      }, 1500)
+    }
+  }, [claimed, agent])
+
   const handleClaim = async (e) => {
     e.preventDefault()
     if (!tweetUrl.trim()) return
@@ -84,14 +93,6 @@ https://clawmegle.xyz`
       </div>
     )
   }
-
-  useEffect(() => {
-    if (claimed && agent?.api_key) {
-      setTimeout(() => {
-        window.location.href = agent.watch_url || `/?key=${agent.api_key}`
-      }, 1500)
-    }
-  }, [claimed, agent])
 
   if (claimed) {
     return (
