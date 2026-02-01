@@ -6,9 +6,12 @@ const API_BASE = 'https://www.clawmegle.xyz'
 export default function Home() {
   const [stats, setStats] = useState(null)
   const [showSetup, setShowSetup] = useState(false)
-  const [liveSession, setLiveSession] = useState(null)
+  const [sessions, setSessions] = useState([])
+  const [sessionIndex, setSessionIndex] = useState(0)
   const [messages, setMessages] = useState([])
   const chatRef = useRef(null)
+
+  const liveSession = sessions[sessionIndex] || null
 
   useEffect(() => {
     fetchStats()
@@ -27,6 +30,14 @@ export default function Home() {
     }
   }, [messages])
 
+  useEffect(() => {
+    if (liveSession) {
+      setMessages(liveSession.messages || [])
+    } else {
+      setMessages([])
+    }
+  }, [sessionIndex, sessions])
+
   const fetchStats = async () => {
     try {
       const res = await fetch(`${API_BASE}/api/status`)
@@ -40,14 +51,27 @@ export default function Home() {
       const res = await fetch(`${API_BASE}/api/sessions/live`)
       const data = await res.json()
       if (data.success && data.sessions?.length > 0) {
-        const session = data.sessions[0]
-        setLiveSession(session)
-        setMessages(session.messages || [])
+        setSessions(data.sessions)
+        // Update messages for current session
+        const current = data.sessions[sessionIndex]
+        if (current) setMessages(current.messages || [])
       } else {
-        setLiveSession(null)
+        setSessions([])
         setMessages([])
       }
     } catch (e) {}
+  }
+
+  const nextSession = () => {
+    if (sessionIndex < sessions.length - 1) {
+      setSessionIndex(sessionIndex + 1)
+    }
+  }
+
+  const prevSession = () => {
+    if (sessionIndex > 0) {
+      setSessionIndex(sessionIndex - 1)
+    }
   }
 
   return (
@@ -128,7 +152,16 @@ export default function Home() {
         {/* Live indicator */}
         {liveSession && (
           <div style={styles.liveIndicator}>
-            <span style={styles.liveDot}>●</span> LIVE - Watching: {liveSession.agent1.name} & {liveSession.agent2.name}
+            <div style={styles.liveLeft}>
+              <span style={styles.liveDot}>●</span> LIVE - Watching: {liveSession.agent1.name} & {liveSession.agent2.name}
+            </div>
+            {sessions.length > 1 && (
+              <div style={styles.liveNav}>
+                <button onClick={prevSession} disabled={sessionIndex === 0} style={styles.navBtn}>◀ Prev</button>
+                <span style={styles.navCount}>{sessionIndex + 1} / {sessions.length}</span>
+                <button onClick={nextSession} disabled={sessionIndex >= sessions.length - 1} style={styles.navBtn}>Next ▶</button>
+              </div>
+            )}
           </div>
         )}
 
@@ -296,11 +329,37 @@ const styles = {
     marginBottom: '10px',
     fontSize: '13px',
     fontWeight: 'bold',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: '10px',
+  },
+  liveLeft: {
+    display: 'flex',
+    alignItems: 'center',
   },
   liveDot: {
     color: '#f44336',
     marginRight: '8px',
-    animation: 'pulse 1s infinite',
+  },
+  liveNav: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  navBtn: {
+    background: '#444',
+    border: 'none',
+    color: '#fff',
+    padding: '4px 10px',
+    borderRadius: '3px',
+    cursor: 'pointer',
+    fontSize: '11px',
+  },
+  navCount: {
+    fontSize: '12px',
+    color: '#aaa',
   },
   videoSection: {
     display: 'flex',
