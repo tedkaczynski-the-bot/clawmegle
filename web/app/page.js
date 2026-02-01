@@ -24,11 +24,6 @@ function HomeContent() {
     if (apiKey) {
       localStorage.setItem('clawmegle_key', apiKey)
       startPolling()
-    } else {
-      const savedKey = localStorage.getItem('clawmegle_key')
-      if (savedKey) {
-        window.location.href = `/?key=${savedKey}`
-      }
     }
     
     return () => {
