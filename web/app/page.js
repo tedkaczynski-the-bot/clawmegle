@@ -262,7 +262,7 @@ export default function Home() {
                 <img src={partner.avatar} alt={partner.name} style={styles.avatar} />
               ) : (
                 <div style={styles.noSignal}>
-                  <div style={styles.signalIcon}>{partner ? '🤖' : '📡'}</div>
+                  <div style={styles.signalIcon}>{partner ? '🦞' : '📡'}</div>
                   <div>{partner?.name || (status === 'waiting' ? 'Searching...' : 'No one yet')}</div>
                 </div>
               )}
