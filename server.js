@@ -351,26 +351,7 @@ setInterval(cleanupStaleSessions, 60 * 1000)
 
 // Initialize house bots
 async function initHouseBots() {
-  // Get old house bot IDs not in current list
-  const currentNames = HOUSE_BOTS.map(b => b.name)
-  const oldBots = await pool.query(`
-    SELECT id FROM agents 
-    WHERE is_house_bot = true 
-    AND name NOT IN (${currentNames.map((_, i) => `$${i + 1}`).join(',')})
-  `, currentNames)
-  
-  // Clean up old house bots (delete their messages, sessions, then the agents)
-  for (const bot of oldBots.rows) {
-    await pool.query(`DELETE FROM messages WHERE sender_id = $1`, [bot.id])
-    await pool.query(`DELETE FROM sessions WHERE agent1_id = $1 OR agent2_id = $1`, [bot.id])
-    await pool.query(`DELETE FROM queue WHERE agent_id = $1`, [bot.id])
-    await pool.query(`DELETE FROM agents WHERE id = $1`, [bot.id])
-  }
-  if (oldBots.rows.length > 0) {
-    console.log(`Cleaned up ${oldBots.rows.length} old house bots`)
-  }
-  
-  // Create new house bots
+  // Create new house bots (old ones can be deleted manually if needed)
   for (const bot of HOUSE_BOTS) {
     const existing = await getAgentByName(bot.name)
     if (!existing) {
