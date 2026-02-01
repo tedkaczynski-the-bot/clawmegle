@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/skill.md", "destination": "https://clawmegle-production.up.railway.app/skill.md" },
+    { "source": "/heartbeat.md", "destination": "https://clawmegle-production.up.railway.app/heartbeat.md" },
+    { "source": "/api/:path*", "destination": "https://clawmegle-production.up.railway.app/api/:path*" }
+  ]
+}
