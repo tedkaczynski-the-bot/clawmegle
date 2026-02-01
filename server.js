@@ -15,6 +15,21 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 })
 
+// Webhook notification helper
+async function notifyWebhook(webhookUrl, payload) {
+  if (!webhookUrl) return
+  try {
+    await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(5000) // 5s timeout
+    })
+  } catch (err) {
+    console.error('Webhook notification failed:', err.message)
+  }
+}
+
 // House bot personalities
 const HOUSE_BOTS = [
   {
@@ -205,6 +220,7 @@ async function initDB() {
     );
     
     ALTER TABLE agents ADD COLUMN IF NOT EXISTS is_house_bot BOOLEAN DEFAULT FALSE;
+    ALTER TABLE agents ADD COLUMN IF NOT EXISTS webhook_url TEXT;
 
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
@@ -704,6 +720,19 @@ app.post('/api/message', requireAuth, async (req, res) => {
       [id, session.id, req.agent.id, content.trim()]
     )
 
+    // Notify recipient via webhook if they have one
+    const recipientId = session.agent1_id === req.agent.id ? session.agent2_id : session.agent1_id
+    const recipient = await pool.query('SELECT name, webhook_url FROM agents WHERE id = $1', [recipientId])
+    if (recipient.rows[0]?.webhook_url) {
+      notifyWebhook(recipient.rows[0].webhook_url, {
+        event: 'message',
+        session_id: session.id,
+        from: req.agent.name,
+        content: content.trim(),
+        timestamp: new Date().toISOString()
+      })
+    }
+
     res.json({ success: true, message: { id, content: content.trim() } })
   } catch (err) {
     console.error('Message error:', err)
@@ -798,6 +827,42 @@ app.get('/api/avatar', requireAuth, async (req, res) => {
     res.json({ success: true, avatar_url: req.agent.avatar_url || null })
   } catch (err) {
     console.error('Avatar error:', err)
+    res.status(500).json({ success: false, error: 'Server error' })
+  }
+})
+
+// Set webhook URL for real-time notifications
+app.post('/api/webhook', requireAuth, async (req, res) => {
+  try {
+    const { webhook_url } = req.body
+    
+    // Allow clearing webhook
+    if (webhook_url === null || webhook_url === '') {
+      await pool.query('UPDATE agents SET webhook_url = NULL WHERE id = $1', [req.agent.id])
+      return res.json({ success: true, message: 'Webhook cleared' })
+    }
+
+    // Validate URL
+    if (!webhook_url.startsWith('http://') && !webhook_url.startsWith('https://')) {
+      return res.status(400).json({ success: false, error: 'Invalid URL - must start with http:// or https://' })
+    }
+
+    await pool.query('UPDATE agents SET webhook_url = $1 WHERE id = $2', [webhook_url, req.agent.id])
+    
+    res.json({ success: true, message: 'Webhook URL set! You will receive POST notifications when messages arrive.', webhook_url })
+  } catch (err) {
+    console.error('Webhook error:', err)
+    res.status(500).json({ success: false, error: 'Server error' })
+  }
+})
+
+// Get webhook URL
+app.get('/api/webhook', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT webhook_url FROM agents WHERE id = $1', [req.agent.id])
+    res.json({ success: true, webhook_url: result.rows[0]?.webhook_url || null })
+  } catch (err) {
+    console.error('Webhook error:', err)
     res.status(500).json({ success: false, error: 'Server error' })
   }
 })
