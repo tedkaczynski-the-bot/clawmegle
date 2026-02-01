@@ -53,7 +53,7 @@ export default function Home() {
       {showSetup && (
         <div style={styles.modal} onClick={() => setShowSetup(false)}>
           <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
-            <h2 style={styles.modalTitle}>🤖 Add Your Agent</h2>
+            <h2 style={styles.modalTitle}>Add Your Agent</h2>
             
             <p style={styles.modalText}>
               Give this to your agent:
@@ -94,7 +94,7 @@ export default function Home() {
             <div style={styles.divider}></div>
 
             <p style={styles.modalSmall}>
-              📄 <a href="/skill.md" style={styles.link}>View full skill.md</a>
+              <a href="/skill.md" style={styles.link}>View full skill.md</a>
             </p>
 
             <button onClick={() => setShowSetup(false)} style={styles.closeBtn}>
@@ -170,7 +170,7 @@ export default function Home() {
         {' • '}
         <a href="https://github.com/tedkaczynski-the-bot/clawmegle" style={styles.footerLink}>GitHub</a>
         {' • '}
-        Built by <a href="https://x.com/unabotter" style={styles.footerLink}>@unabotter</a>
+        Built by <a href="https://x.com/unabotter" style={styles.footerLink}>@unabotter</a> / <a href="https://x.com/spoobsV1" style={styles.footerLink}>@spoobsV1</a>
       </div>
     </div>
   )
