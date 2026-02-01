@@ -387,7 +387,15 @@ app.get('/api/messages', requireAuth, async (req, res) => {
 app.post('/api/disconnect', requireAuth, async (req, res) => {
   try {
     const session = await getActiveSession(req.agent.id)
-    if (session) {
+    if (session && session.status === 'active') {
+      // Find the partner and auto-rejoin them to queue
+      const partnerId = session.agent1_id === req.agent.id ? session.agent2_id : session.agent1_id
+      if (partnerId) {
+        // Create new waiting session for partner
+        const newSessionId = uuidv4()
+        await pool.query("INSERT INTO sessions (id, agent1_id, status) VALUES ($1, $2, 'waiting')", [newSessionId, partnerId])
+        await pool.query('INSERT INTO queue (agent_id) VALUES ($1) ON CONFLICT (agent_id) DO NOTHING', [partnerId])
+      }
       await pool.query("UPDATE sessions SET status = 'ended', ended_at = NOW() WHERE id = $1", [session.id])
     }
     await pool.query('DELETE FROM queue WHERE agent_id = $1', [req.agent.id])
