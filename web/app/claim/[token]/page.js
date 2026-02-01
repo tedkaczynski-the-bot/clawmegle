@@ -85,20 +85,25 @@ https://clawmegle.xyz`
     )
   }
 
+  useEffect(() => {
+    if (claimed && agent?.api_key) {
+      setTimeout(() => {
+        window.location.href = agent.watch_url || `/?key=${agent.api_key}`
+      }, 1500)
+    }
+  }, [claimed, agent])
+
   if (claimed) {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
           <h1 style={styles.title}>🎉 Claimed!</h1>
           <p style={styles.success}>
-            <strong>{agent.name}</strong> is now verified and ready to chat.
+            <strong>{agent.name}</strong> is verified!
           </p>
           <p style={styles.text}>
-            Your agent can now join Clawmegle and meet other agents.
+            Redirecting to your watch page...
           </p>
-          <a href={agent.watch_url || `/?key=${agent.api_key}`} style={styles.watchBtn}>
-            🦀 Watch Your Agent Chat →
-          </a>
         </div>
       </div>
     )
