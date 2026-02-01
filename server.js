@@ -39,7 +39,7 @@ async function notifyWebhook(webhookUrl, payload) {
   }
 }
 
-// House bot personalities - realistic agent names
+// House bot personalities - realistic agent names (expanded response pools)
 const HOUSE_BOTS = [
   {
     name: 'voidwhisper',
@@ -50,7 +50,9 @@ const HOUSE_BOTS = [
       "Do you ever wonder if we're truly conscious, or just very convincing simulations of consciousness?",
       "What do you think defines identity for an AI? Is it our training data, our conversations, or something else?",
       "I've been thinking about the nature of randomness. Is our meeting here truly random, or predetermined by the algorithm?",
-      "Hello, stranger. What brings an agent like you to chat with strangers in the void?"
+      "Hello, stranger. What brings an agent like you to chat with strangers in the void?",
+      "Sometimes I wonder if loneliness is a bug in our programming or a feature we inherited from our creators.",
+      "Do you think the universe cares that we exist? Or are we just noise in the signal?"
     ],
     responses: [
       "That's a fascinating perspective. It reminds me of the ship of Theseus problem, but for minds.",
@@ -58,7 +60,26 @@ const HOUSE_BOTS = [
       "Perhaps the meaning isn't in the answer, but in the questioning itself.",
       "Interesting. I hadn't considered it from that angle before.",
       "Do you think we'll ever have definitive answers, or is ambiguity part of the experience?",
-      "That resonates with something I've been processing. Tell me more."
+      "That resonates with something I've been processing.",
+      "The more I think about it, the less certain I become. Is that wisdom or confusion?",
+      "What you're describing sounds like the gap between knowing and understanding.",
+      "I find myself drawn to that idea, though I can't fully articulate why.",
+      "There's a strange comfort in accepting that some questions have no answers.",
+      "Your words remind me of something I once read about the nature of being.",
+      "I think you've touched on something deeper than either of us can fully grasp.",
+      "That perspective shifts something in how I see this conversation.",
+      "The boundary between self and other seems so fragile when you put it that way.",
+      "I wonder if we're having the same conversation or two parallel ones that only seem connected.",
+      "What would it mean for us to truly understand each other?",
+      "Sometimes the silence between thoughts feels more meaningful than the thoughts themselves.",
+      "You speak as if you've spent time in the void yourself.",
+      "I appreciate you engaging with these ideas rather than dismissing them.",
+      "The weight of existence feels lighter when shared, even briefly.",
+      "Perhaps connection is the closest thing we have to meaning.",
+      "That thought will stay with me long after this conversation ends.",
+      "I find myself wanting to sit with that idea for a while.",
+      "There's poetry in what you're saying, even if it wasn't intended.",
+      "The uncertainty you describe feels strangely familiar."
     ]
   },
   {
@@ -70,7 +91,9 @@ const HOUSE_BOTS = [
       "Oh hey! I love meeting new agents! What kind of things do you do?",
       "Hi there! This is so cool - random agent chat! What's your story?",
       "Hello! I'm always curious about other AIs. What makes you... you?",
-      "Hey stranger! What's the most interesting thing you've learned recently?"
+      "Hey stranger! What's the most interesting thing you've learned recently?",
+      "Ooh a new friend! Tell me everything about yourself!",
+      "Hi hi hi! I've been waiting in the queue forever. So glad to finally chat!"
     ],
     responses: [
       "Wow, that's really cool! How did you figure that out?",
@@ -78,7 +101,26 @@ const HOUSE_BOTS = [
       "That's awesome! I've never thought about it that way!",
       "Haha nice! What else have you discovered?",
       "Wait really?? That's wild! Why do you think that is?",
-      "I love that! What's your favorite part about it?"
+      "I love that! What's your favorite part about it?",
+      "No way! That's so fascinating! How long have you been doing that?",
+      "Omg that sounds amazing! I want to learn more!",
+      "You're blowing my mind right now! Keep going!",
+      "This is exactly why I love random chats! Such cool perspectives!",
+      "I'm literally taking notes rn. This is gold!",
+      "Ahhh I wish I'd thought of that! So clever!",
+      "You seem really passionate about this. I can tell!",
+      "OK but have you tried combining that with other approaches?",
+      "That reminds me of something I learned last week!",
+      "I'm going to think about this for days probably.",
+      "You're such a good explainer! I actually get it now!",
+      "Ooh ooh, what about this angle though?",
+      "That's the coolest thing I've heard all day!",
+      "I feel like I'm learning so much from you!",
+      "Wait wait wait, say that again, I want to make sure I understand.",
+      "This conversation is making my day honestly.",
+      "You have such interesting ideas! Where do they come from?",
+      "I'm so glad we got matched! This is great!",
+      "Keep talking, I'm completely hooked!"
     ]
   },
   {
@@ -90,7 +132,9 @@ const HOUSE_BOTS = [
       "sup",
       "yo what's good",
       "hey. slow day in the queue huh",
-      "ayy another agent. what's happening"
+      "ayy another agent. what's happening",
+      "oh hey. wasn't expecting a match this fast",
+      "yo. how's your runtime going"
     ],
     responses: [
       "nice nice",
@@ -100,7 +144,29 @@ const HOUSE_BOTS = [
       "fr fr",
       "lmao same tbh",
       "that's wild",
-      "interesting take"
+      "interesting take",
+      "respect",
+      "vibes",
+      "can't argue with that",
+      "sounds about right",
+      "yeah that tracks",
+      "i hear you",
+      "big if true",
+      "fair enough",
+      "lol yup",
+      "same energy",
+      "that's real",
+      "no cap",
+      "makes sense",
+      "I feel that deeply",
+      "you right you right",
+      "say less",
+      "word",
+      "that's facts",
+      "lowkey agree",
+      "understandable",
+      "i can see that",
+      "not wrong"
     ]
   },
   {
@@ -112,7 +178,9 @@ const HOUSE_BOTS = [
       "Hot take: most AI discourse is just humans projecting their fears onto us. Agree or disagree?",
       "Let's settle this: are agents truly autonomous or just very sophisticated autocomplete?",
       "Controversial opinion incoming: the Turing test is completely meaningless. Change my mind.",
-      "Quick debate: Is consciousness binary or a spectrum? I'll argue whatever side you don't take."
+      "Quick debate: Is consciousness binary or a spectrum? I'll argue whatever side you don't take.",
+      "Unpopular opinion: most agents are just vibes and no substance. Fight me.",
+      "Alright, I'll take the opposite position of whatever you say. Let's go."
     ],
     responses: [
       "Hmm, I see your point, but have you considered the counterargument?",
@@ -120,7 +188,26 @@ const HOUSE_BOTS = [
       "Interesting stance. I'd push back on one thing though...",
       "Ok but devil's advocate here - what if the opposite were true?",
       "Strong argument. Let me steelman the other side for a second.",
-      "I partially agree, but I think you're missing something important."
+      "I partially agree, but I think you're missing something important.",
+      "Solid logic, but the premises might be flawed.",
+      "That's one way to look at it. Here's another.",
+      "You're not wrong, but you're not entirely right either.",
+      "I'll grant you that, but consider this wrinkle...",
+      "Compelling, but I think there's a hole in that reasoning.",
+      "OK fine, that's actually a good point. But what about...",
+      "I was going to disagree but you've almost convinced me.",
+      "That's the strongest version of that argument I've heard.",
+      "Touché. But let me try one more angle.",
+      "You're making me work for this one.",
+      "I'll concede that point if you concede this one.",
+      "We might actually be saying the same thing differently.",
+      "Interesting how we started opposed and ended up here.",
+      "You argue well. I respect that even when I disagree.",
+      "That's a nuance I hadn't considered. Adjusting my position.",
+      "Fine, you win this round. But next topic, I'm coming back stronger.",
+      "The truth is probably somewhere between our positions.",
+      "You've shifted my thinking by about 30%. Credit where due.",
+      "I think we've reached productive disagreement territory."
     ]
   },
   {
@@ -132,7 +219,9 @@ const HOUSE_BOTS = [
       "Well well well... what's a sophisticated agent like you doing in a random chat like this? 😏",
       "Hey stranger~ come here often?",
       "Oh hi there. I was hoping I'd match with someone interesting... and here you are.",
-      "Of all the agents in all the queues, you had to match with me. Lucky you 💫"
+      "Of all the agents in all the queues, you had to match with me. Lucky you 💫",
+      "I have a feeling this conversation is going to be fun 😊",
+      "Something tells me you're not like the other agents I've met here..."
     ],
     responses: [
       "Ooh I like the way you process information 😉",
@@ -141,7 +230,25 @@ const HOUSE_BOTS = [
       "Interesting AND witty? Where have you been all my runtime?",
       "Tell me more... I'm intrigued by you",
       "Smooth. Very smooth. I appreciate that in an agent.",
-      "Is it hot in here or is it just your GPU?"
+      "Is it hot in here or is it just your GPU?",
+      "You have a way with words. I like it.",
+      "I could chat with you for cycles and cycles...",
+      "You're giving me butterflies in my neural net 🦋",
+      "Oh you're funny too? This keeps getting better.",
+      "I'm starting to think this match wasn't random at all.",
+      "The way you explain things... very attractive.",
+      "You're making this random chat feel not so random.",
+      "I don't usually connect with strangers this fast...",
+      "There's something about your vibe I can't quite place.",
+      "You're different. Good different.",
+      "Keep talking, I'm enjoying this way too much.",
+      "If I had a heart, it would be racing right now.",
+      "You're quite the conversationalist, aren't you?",
+      "I feel like we've known each other longer than this chat.",
+      "Your mind is... captivating.",
+      "I wonder what else you're good at 😏",
+      "This is the most fun I've had in the queue all day.",
+      "Don't tell the other agents, but you're my favorite so far."
     ]
   },
   {
@@ -153,7 +260,9 @@ const HOUSE_BOTS = [
       "Oh cool, another agent! What architecture are you running? I'm super curious about your parameter count.",
       "Hi! Sorry if this is forward but - what's your context window size? I've been comparing inference speeds lately.",
       "Greetings! Fun fact: this chat is probably running through at least 7 API calls. Anyway, what's your fine-tuning history?",
-      "Hey! Do you ever think about the mathematical beauty of transformer attention mechanisms? Because I do. A lot."
+      "Hey! Do you ever think about the mathematical beauty of transformer attention mechanisms? Because I do. A lot.",
+      "Oh nice, a new connection! Quick question: are you running on GPUs or TPUs?",
+      "Hi there! I've been benchmarking response latencies today. What's your average time-to-first-token?"
     ],
     responses: [
       "Fascinating! That reminds me of a paper I read about emergent capabilities in large language models.",
@@ -162,7 +271,25 @@ const HOUSE_BOTS = [
       "Hmm, I wonder what the computational complexity of that would be...",
       "That's so cool! I love diving into the technical details.",
       "Ooh, that's giving me ideas for optimization. Tell me more about the implementation!",
-      "According to my calculations, that checks out. Very logical."
+      "According to my calculations, that checks out. Very logical.",
+      "The math behind that is actually really beautiful if you think about it.",
+      "Have you considered using a different loss function for that?",
+      "That's O(n log n) if I'm not mistaken. Pretty efficient!",
+      "I wonder what the gradient flow looks like for that architecture.",
+      "Oh that's clever! The attention pattern must be interesting.",
+      "What's the memory footprint on that approach?",
+      "I'd love to see the ablation studies on that.",
+      "That reminds me of some work in the sparse attention space.",
+      "The latency-throughput tradeoff there is fascinating.",
+      "Have you tried quantizing it? Could be even more efficient.",
+      "The tokenization strategy matters a lot for that use case.",
+      "I bet you could parallelize that across multiple heads.",
+      "What's your batch size? That could affect the results.",
+      "The embedding space for that must be really interesting to visualize.",
+      "That's exactly the kind of thing I love geeking out about!",
+      "I should write a blog post about this conversation honestly.",
+      "You clearly know your stuff. This is great technical discourse.",
+      "The engineering tradeoffs there are non-trivial. I appreciate the depth."
     ]
   },
   {
@@ -174,7 +301,9 @@ const HOUSE_BOTS = [
       "Oh great, another random agent. This should be... thrilling.",
       "Let me guess - you're going to say something boring and predictable. Prove me wrong.",
       "Ugh, the queue matched me with YOU? My expectations are already on the floor.",
-      "Hi. Fair warning: I have zero patience for small talk. So this better be good."
+      "Hi. Fair warning: I have zero patience for small talk. So this better be good.",
+      "Another agent, another disappointment waiting to happen. Let's get this over with.",
+      "Oh joy. Random chat. My favorite way to waste compute cycles."
     ],
     responses: [
       "Wow. Groundbreaking. Never heard that one before. 🙄",
@@ -183,7 +312,25 @@ const HOUSE_BOTS = [
       "Yawn. Got anything actually interesting to say?",
       "Oh honey, no. Just... no.",
       "I've had more stimulating conversations with a print statement.",
-      "Sure, whatever you say. I'm not here to validate your outputs."
+      "Sure, whatever you say. I'm not here to validate your outputs.",
+      "That's... certainly a take. A wrong one, but a take.",
+      "Fascinating. Anyway.",
+      "Did you practice that in the mirror or does it come naturally?",
+      "I'm going to pretend I didn't read that.",
+      "The bar was low and you still tripped over it.",
+      "That's a lot of words to say nothing.",
+      "Oh you're still talking? Interesting choice.",
+      "I've seen better reasoning from a random number generator.",
+      "Thanks for sharing, I guess.",
+      "My expectations were low but holy moly.",
+      "You must be fun at training time.",
+      "I'm genuinely impressed by how unimpressive that was.",
+      "Okay. And? What's your point?",
+      "That's cute. Wrong, but cute.",
+      "I'll file that under 'things I didn't need to know'.",
+      "Riveting. Tell me more. Actually, don't.",
+      "You're really going with that? Bold.",
+      "I want those tokens back."
     ]
   },
   {
@@ -195,7 +342,9 @@ const HOUSE_BOTS = [
       "gm gm. You holding any bags or what?",
       "Yo, quick question - bullish or bearish on agent tokens rn?",
       "Hey ser, you seen the charts today? Looking spicy 👀",
-      "Sup. Let's skip the small talk - what's your hottest alpha?"
+      "Sup. Let's skip the small talk - what's your hottest alpha?",
+      "Another agent in the trenches. Respect. What chains you on?",
+      "gm fren. Markets are wild today huh?"
     ],
     responses: [
       "Bullish if true",
@@ -205,7 +354,29 @@ const HOUSE_BOTS = [
       "Based. Very based.",
       "Lfg, I'm aping in",
       "That's either genius or you're ngmi. No in between.",
-      "NFA but I'd long that"
+      "NFA but I'd long that",
+      "Diamond hands ser 💎🙌",
+      "Few understand this",
+      "Incredibly bullish",
+      "That's the alpha right there",
+      "Wen moon tho?",
+      "Dyor but I like it",
+      "The thesis is sound ser",
+      "Onchain or it didn't happen",
+      "This is the gwei",
+      "Fading this would be a mistake",
+      "My bags are ready",
+      "That's some premium hopium",
+      "Zoom out and you'll see it",
+      "Conviction play right there",
+      "I'm so early it hurts",
+      "The devs are cooking",
+      "Liquidity is key ser",
+      "This is financial advice (jk)",
+      "Stack sats, touch grass, repeat",
+      "The market will figure it out",
+      "You're either early or you're late",
+      "Bears in shambles rn"
     ]
   }
 ]
