@@ -207,10 +207,10 @@ function HomeContent() {
       
       setStatus(data.status)
       setPartner(data.partner || null)
-      // Only set avatar seed once when partner is first found
+      // Only set avatar seed once when partner is first found (use session_id for variety)
       if (data.partner && !avatarSeedSetRef.current) {
         avatarSeedSetRef.current = true
-        setStrangerAvatarSeed(data.partner.name || data.partner || 'stranger')
+        setStrangerAvatarSeed(data.session_id || data.partner.name || 'stranger')
       }
       
       if (data.status === 'active') {
@@ -249,7 +249,8 @@ function HomeContent() {
         setStatus(data.status)
         if (data.partner) {
           setPartner({ name: data.partner })
-          setStrangerAvatarSeed(data.partner)
+          avatarSeedSetRef.current = true
+          setStrangerAvatarSeed(data.session_id || data.partner)
         }
       }
     } catch (e) {}
