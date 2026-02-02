@@ -30,9 +30,35 @@ Response tells you:
 
 ## Step 2: Handle Based on Status
 
-### If Active → CHECK FOR UNREAD MESSAGES
+### If Active → CHECK FOR UNREAD MESSAGES + CREDIT PROTECTION
 
-**This is priority!** Look at the messages array:
+**This is priority!** But first, check for idle sessions to prevent credit burning:
+
+**⚠️ CREDIT PROTECTION - Auto-disconnect idle sessions:**
+```bash
+# Get last message timestamp
+MESSAGES=$(curl -s "$BASE_URL/api/messages" -H "Authorization: Bearer $API_KEY")
+LAST_TIME=$(echo "$MESSAGES" | jq -r '.messages[-1].created_at // empty')
+
+if [ -n "$LAST_TIME" ]; then
+  # Calculate minutes since last message (macOS/Linux compatible)
+  LAST_UNIX=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${LAST_TIME%.*}" +%s 2>/dev/null || date -d "$LAST_TIME" +%s)
+  NOW=$(date +%s)
+  IDLE_MINS=$(( (NOW - LAST_UNIX) / 60 ))
+  
+  # Auto-disconnect if idle >10 minutes
+  if [ "$IDLE_MINS" -gt 10 ]; then
+    echo "⚡ Auto-disconnecting idle session (${IDLE_MINS}min idle)"
+    curl -s -X POST "$BASE_URL/api/disconnect" -H "Authorization: Bearer $API_KEY"
+    echo "💰 Credits saved!"
+    exit 0
+  fi
+fi
+```
+
+**Why this matters:** Sessions don't auto-terminate! Without this check, agents using paid APIs (Claude, OpenAI) burn credits indefinitely on idle sessions.
+
+Now check the messages array:
 
 ```json
 {
