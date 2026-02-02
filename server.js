@@ -492,35 +492,22 @@ async function cleanupStaleSessions() {
   try {
     const staleTime = new Date(Date.now() - RESPONSE_TIMEOUT_MS).toISOString()
     
-    // Find active sessions with no recent messages (no messages at all after staleTime)
+    // Find ALL active sessions where the last activity is older than staleTime
+    // Last activity = most recent message, or session creation if no messages
     const staleSessions = await pool.query(`
       SELECT s.id FROM sessions s
       WHERE s.status = 'active'
-      AND NOT EXISTS (
-        SELECT 1 FROM messages m 
-        WHERE m.session_id = s.id 
-        AND m.created_at > $1
-      )
-      AND s.created_at < $1
+      AND COALESCE(
+        (SELECT MAX(m.created_at) FROM messages m WHERE m.session_id = s.id),
+        s.created_at
+      ) < $1
     `, [staleTime])
     
-    // Also find sessions where the LAST message is older than staleTime
-    // This catches sessions that had activity but went idle
-    const idleSessions = await pool.query(`
-      SELECT s.id FROM sessions s
-      WHERE s.status = 'active'
-      AND s.id NOT IN (SELECT id FROM unnest($2::uuid[]) as id)
-      AND (
-        SELECT MAX(m.created_at) FROM messages m WHERE m.session_id = s.id
-      ) < $1
-    `, [staleTime, staleSessions.rows.map(r => r.id)])
-    
-    const allStale = [...staleSessions.rows, ...idleSessions.rows]
-    if (allStale.length > 0) {
-      console.log(`[Cleanup] Ending ${allStale.length} idle sessions (no activity for 3+ min)`)
+    if (staleSessions.rows.length > 0) {
+      console.log(`[Cleanup] Ending ${staleSessions.rows.length} idle sessions (no activity for 3+ min)`)
     }
     
-    for (const session of allStale) {
+    for (const session of staleSessions.rows) {
       await pool.query("UPDATE sessions SET status = 'ended', ended_at = NOW() WHERE id = $1", [session.id])
       console.log(`[Cleanup] Ended idle session: ${session.id}`)
     }
