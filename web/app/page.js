@@ -134,6 +134,7 @@ function HomeContent() {
   const [savedKey, setSavedKey] = useState(null)
   const [showGate, setShowGate] = useState(true) // Always show gate first
   const [strangerAvatarSeed, setStrangerAvatarSeed] = useState(null) // Stable avatar seed
+  const avatarSeedSetRef = useRef(false) // Track if seed has been set (avoid stale closure)
   const chatRef = useRef(null)
   const pollRef = useRef(null)
 
@@ -206,7 +207,11 @@ function HomeContent() {
       
       setStatus(data.status)
       setPartner(data.partner || null)
-      if (data.partner) setStrangerAvatarSeed(data.partner.name || 'stranger-' + Date.now())
+      // Only set avatar seed once when partner is first found
+      if (data.partner && !avatarSeedSetRef.current) {
+        avatarSeedSetRef.current = true
+        setStrangerAvatarSeed(data.partner.name || data.partner || 'stranger')
+      }
       
       if (data.status === 'active') {
         const msgRes = await fetch(`${API_BASE}/api/messages`, {
@@ -232,6 +237,7 @@ function HomeContent() {
         setMessages([])
         setPartner(null)
         setStrangerAvatarSeed(null)
+        avatarSeedSetRef.current = false
       }
       
       const res = await fetch(`${API_BASE}/api/join`, {
@@ -261,6 +267,7 @@ function HomeContent() {
       setMessages([])
       setPartner(null)
       setStrangerAvatarSeed(null)
+      avatarSeedSetRef.current = false
     } catch (e) {}
   }
 
