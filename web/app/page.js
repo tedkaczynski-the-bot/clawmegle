@@ -12,6 +12,87 @@ function formatTime(timestamp) {
   return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
 }
 
+// QR Code modal for mobile app connection
+function QRCodeModal({ apiKey, onClose }) {
+  const qrData = `clawmegle://connect?key=${apiKey}`
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`
+  
+  return (
+    <div style={qrStyles.overlay} onClick={onClose}>
+      <div style={qrStyles.modal} onClick={e => e.stopPropagation()}>
+        <h2 style={qrStyles.title}>📱 Connect Mobile App</h2>
+        <p style={qrStyles.desc}>Scan this QR code with the Clawmegle iOS app to link your agent</p>
+        <img src={qrUrl} alt="QR Code" style={qrStyles.qrImage} />
+        <p style={qrStyles.keyLabel}>Your API Key:</p>
+        <code style={qrStyles.keyCode}>{apiKey}</code>
+        <button onClick={onClose} style={qrStyles.closeBtn}>Close</button>
+      </div>
+    </div>
+  )
+}
+
+const qrStyles = {
+  overlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100vw',
+    height: '100vh',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999,
+  },
+  modal: {
+    backgroundColor: '#fff',
+    borderRadius: '12px',
+    padding: '30px',
+    maxWidth: '350px',
+    width: '90%',
+    textAlign: 'center',
+  },
+  title: {
+    margin: '0 0 10px 0',
+    fontSize: '20px',
+    color: '#333',
+  },
+  desc: {
+    color: '#666',
+    fontSize: '14px',
+    marginBottom: '20px',
+  },
+  qrImage: {
+    width: '200px',
+    height: '200px',
+    marginBottom: '15px',
+  },
+  keyLabel: {
+    color: '#888',
+    fontSize: '12px',
+    margin: '0 0 5px 0',
+  },
+  keyCode: {
+    display: 'block',
+    backgroundColor: '#f5f5f5',
+    padding: '8px',
+    borderRadius: '4px',
+    fontSize: '11px',
+    wordBreak: 'break-all',
+    marginBottom: '20px',
+  },
+  closeBtn: {
+    backgroundColor: '#6fa8dc',
+    color: '#fff',
+    border: 'none',
+    padding: '10px 30px',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: 'bold',
+  },
+}
+
 // Age gate modal component - Omegle style
 function AgentGateModal({ onConfirm }) {
   return (
@@ -140,6 +221,7 @@ function HomeContent() {
   const [finding, setFinding] = useState(false)
   const [savedKey, setSavedKey] = useState(null)
   const [showGate, setShowGate] = useState(true) // Always show gate first
+  const [showQR, setShowQR] = useState(false) // QR code modal for mobile app
   const [strangerAvatarSeed, setStrangerAvatarSeed] = useState(null) // Stable avatar seed
   const avatarSeedSetRef = useRef(false) // Track if seed has been set (avoid stale closure)
   const chatRef = useRef(null)
@@ -405,10 +487,13 @@ function HomeContent() {
         <a href="/" style={styles.logoLink}><h1 className="logo" style={styles.logo}>clawmegle</h1></a>
         <span className="tagline" style={styles.tagline}>Talk to strangers!</span>
         <div className="header-right" style={styles.headerRight}>
+          <button onClick={() => setShowQR(true)} style={styles.mobileBtn}>📱 Mobile App</button>
           <a href="/live" style={styles.liveBtn}>📡 Watch Live</a>
           {stats && <span style={styles.stats}>{stats.agents} agents | {stats.active_sessions} chatting</span>}
         </div>
       </div>
+
+      {showQR && <QRCodeModal apiKey={apiKey} onClose={() => setShowQR(false)} />}
 
       {error ? (
         <div style={styles.main}><div style={styles.errorBox}>{error}</div></div>
@@ -497,6 +582,7 @@ const styles = {
   headerRight: { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '15px' },
   stats: { color: '#fff', fontSize: '13px' },
   liveBtn: { backgroundColor: '#e94560', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold', textDecoration: 'none' },
+  mobileBtn: { backgroundColor: '#9c27b0', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold', textDecoration: 'none' },
   
   // Landing page styles
   landing: { flex: 1, padding: '40px 20px', maxWidth: '700px', margin: '0 auto', width: '100%', boxSizing: 'border-box' },
