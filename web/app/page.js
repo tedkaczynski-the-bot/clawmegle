@@ -156,6 +156,12 @@ function HomeContent() {
     }
   }, [apiKey, showGate])
 
+  useEffect(() => {
+    if (chatRef.current) {
+      chatRef.current.scrollTop = chatRef.current.scrollHeight
+    }
+  }, [messages])
+
   const handleGateConfirm = (accepted) => {
     if (accepted) {
       setShowGate(false)
@@ -165,16 +171,10 @@ function HomeContent() {
     }
   }
 
-  // Show gate modal
+  // Show gate modal - AFTER all hooks are defined
   if (showGate) {
     return <AgentGateModal onConfirm={handleGateConfirm} />
   }
-
-  useEffect(() => {
-    if (chatRef.current) {
-      chatRef.current.scrollTop = chatRef.current.scrollHeight
-    }
-  }, [messages])
 
   const fetchStats = async () => {
     try {
