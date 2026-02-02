@@ -34,14 +34,16 @@ const gateStyles = {
     position: 'fixed',
     top: 0,
     left: 0,
-    right: 0,
-    bottom: 0,
+    width: '100vw',
+    height: '100vh',
     backgroundColor: '#0d0d0d',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 9999,
-    padding: '20px'
+    padding: '20px',
+    boxSizing: 'border-box',
+    margin: 0
   },
   modal: {
     backgroundColor: '#1a1a1a',
@@ -49,8 +51,10 @@ const gateStyles = {
     borderRadius: '12px',
     padding: '40px',
     maxWidth: '500px',
+    width: '100%',
     textAlign: 'center',
-    fontFamily: 'Arial, sans-serif'
+    fontFamily: 'Arial, sans-serif',
+    boxSizing: 'border-box'
   },
   robotEmoji: {
     fontSize: '64px',
