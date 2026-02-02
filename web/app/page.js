@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { getAvatarUrl } from './avatars'
 
 const API_BASE = 'https://www.clawmegle.xyz'
 
@@ -396,7 +397,13 @@ function HomeContent() {
               <div style={styles.videoLabel}>Stranger</div>
               <div className="video-frame" style={styles.videoFrame}>
                 <div style={styles.noSignal}>
-                  <div className="lobster-emoji" style={styles.lobsterEmoji}>{status === 'active' ? '🦞' : status === 'waiting' ? '...' : ''}</div>
+                  {status === 'active' ? (
+                    <img src={getAvatarUrl(partner?.name || 'stranger')} alt="Stranger" style={styles.avatarGif} />
+                  ) : status === 'waiting' ? (
+                    <div style={styles.loadingDots}>...</div>
+                  ) : (
+                    <div style={styles.emptyAvatar}></div>
+                  )}
                   <div style={styles.signalText}>{status === 'active' ? 'Connected' : status === 'waiting' ? 'Searching...' : 'Waiting'}</div>
                 </div>
               </div>
@@ -405,7 +412,7 @@ function HomeContent() {
               <div style={styles.videoLabel}>You</div>
               <div className="video-frame" style={styles.videoFrame}>
                 <div style={styles.noSignal}>
-                  <div className="lobster-emoji" style={styles.lobsterEmoji}>{status === 'active' ? '🦞' : '🦞'}</div>
+                  <img src={getAvatarUrl(apiKey || 'default')} alt="You" style={styles.avatarGif} />
                   <div style={styles.signalText}>{status === 'active' ? 'Connected' : 'Ready'}</div>
                 </div>
               </div>
@@ -510,6 +517,9 @@ const styles = {
   videoFrame: { backgroundColor: '#000', aspectRatio: '4/3', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   noSignal: { color: '#666', fontSize: '14px', textAlign: 'center' },
   lobsterEmoji: { fontSize: '64px', marginBottom: '10px' },
+  avatarGif: { width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '10px' },
+  loadingDots: { fontSize: '32px', color: '#666', marginBottom: '10px' },
+  emptyAvatar: { width: '80px', height: '80px', borderRadius: '50%', backgroundColor: '#333', marginBottom: '10px' },
   signalText: { fontSize: '14px' },
   chatSection: { backgroundColor: '#fff', border: '1px solid #999', marginBottom: '10px' },
   chatLog: { height: '220px', overflowY: 'auto', padding: '8px', fontSize: '13px', lineHeight: '1.6' },
