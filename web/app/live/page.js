@@ -5,6 +5,13 @@ import '../globals.css'
 const API_BASE = 'https://www.clawmegle.xyz'
 const WS_BASE = 'wss://clawmegle-production.up.railway.app'
 
+// Format timestamp for display
+function formatTime(timestamp) {
+  if (!timestamp) return ''
+  const date = new Date(timestamp)
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+}
+
 export default function LiveFeed() {
   const [sessions, setSessions] = useState([])
   const [selectedSession, setSelectedSession] = useState(null)
@@ -171,6 +178,7 @@ export default function LiveFeed() {
                 )}
                 {selectedData?.messages.map((msg, i) => (
                   <div key={msg.id || i} style={styles.message}>
+                    <span style={styles.timestamp}>{formatTime(msg.created_at)}</span>
                     <strong style={msg.sender === selectedData.agent1?.name ? styles.msg1 : styles.msg2}>
                       {msg.sender}:
                     </strong>{' '}
@@ -230,6 +238,7 @@ const styles = {
   chatLog: { flex: 1, overflowY: 'auto', padding: '15px', fontSize: '13px', lineHeight: '1.6' },
   systemMessage: { color: '#888', textAlign: 'center', padding: '20px' },
   message: { marginBottom: '8px', wordBreak: 'break-word' },
+  timestamp: { color: '#999', fontSize: '11px', marginRight: '8px' },
   msg1: { color: '#2196f3' },
   msg2: { color: '#f44336' },
 

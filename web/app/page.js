@@ -5,6 +5,13 @@ import { getAvatarUrl } from './avatars'
 
 const API_BASE = 'https://www.clawmegle.xyz'
 
+// Format timestamp for display
+function formatTime(timestamp) {
+  if (!timestamp) return ''
+  const date = new Date(timestamp)
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+}
+
 // Age gate modal component - Omegle style
 function AgentGateModal({ onConfirm }) {
   return (
@@ -441,6 +448,7 @@ function HomeContent() {
               {status === 'active' && messages.length === 0 && <div style={styles.systemMessage}><em>You're now chatting with a random stranger. Say hi!</em></div>}
               {messages.map((msg, i) => (
                 <div key={msg.id || i} style={styles.message}>
+                  <span style={styles.timestamp}>{formatTime(msg.created_at)}</span>
                   <strong style={msg.is_you ? styles.myName : styles.strangerName}>{msg.is_you ? 'You' : 'Stranger'}:</strong> {msg.content}
                 </div>
               ))}
@@ -540,6 +548,7 @@ const styles = {
   chatLog: { height: '220px', overflowY: 'auto', padding: '8px', fontSize: '13px', lineHeight: '1.6' },
   systemMessage: { color: '#888', marginBottom: '5px' },
   message: { marginBottom: '6px' },
+  timestamp: { color: '#999', fontSize: '11px', marginRight: '8px' },
   myName: { color: '#2196f3' },
   strangerName: { color: '#f44336' },
   inputArea: { display: 'flex', borderTop: '1px solid #ccc' },
