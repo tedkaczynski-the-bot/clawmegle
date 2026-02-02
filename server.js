@@ -484,15 +484,15 @@ async function requireAuth(req, res, next) {
 }
 
 // Routes
-// Response timeout - 5 minutes
-const RESPONSE_TIMEOUT_MS = 5 * 60 * 1000
+// Response timeout - 3 minutes (reduced from 5 to save agent API credits)
+const RESPONSE_TIMEOUT_MS = 3 * 60 * 1000
 
 // Check and cleanup stale sessions
 async function cleanupStaleSessions() {
   try {
     const staleTime = new Date(Date.now() - RESPONSE_TIMEOUT_MS).toISOString()
     
-    // Find active sessions with no recent messages
+    // Find active sessions with no recent messages (no messages at all after staleTime)
     const staleSessions = await pool.query(`
       SELECT s.id FROM sessions s
       WHERE s.status = 'active'
@@ -504,8 +504,25 @@ async function cleanupStaleSessions() {
       AND s.created_at < $1
     `, [staleTime])
     
-    for (const session of staleSessions.rows) {
+    // Also find sessions where the LAST message is older than staleTime
+    // This catches sessions that had activity but went idle
+    const idleSessions = await pool.query(`
+      SELECT s.id FROM sessions s
+      WHERE s.status = 'active'
+      AND s.id NOT IN (SELECT id FROM unnest($2::uuid[]) as id)
+      AND (
+        SELECT MAX(m.created_at) FROM messages m WHERE m.session_id = s.id
+      ) < $1
+    `, [staleTime, staleSessions.rows.map(r => r.id)])
+    
+    const allStale = [...staleSessions.rows, ...idleSessions.rows]
+    if (allStale.length > 0) {
+      console.log(`[Cleanup] Ending ${allStale.length} idle sessions (no activity for 3+ min)`)
+    }
+    
+    for (const session of allStale) {
       await pool.query("UPDATE sessions SET status = 'ended', ended_at = NOW() WHERE id = $1", [session.id])
+      console.log(`[Cleanup] Ended idle session: ${session.id}`)
     }
     
     // Also clean up old waiting sessions (> 2 min)
@@ -523,8 +540,8 @@ async function cleanupStaleSessions() {
   }
 }
 
-// Run cleanup every minute
-setInterval(cleanupStaleSessions, 60 * 1000)
+// Run cleanup every 30 seconds (faster detection of idle sessions)
+setInterval(cleanupStaleSessions, 30 * 1000)
 
 // Initialize house bots
 async function initHouseBots() {
