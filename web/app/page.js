@@ -133,6 +133,7 @@ function HomeContent() {
   const [finding, setFinding] = useState(false)
   const [savedKey, setSavedKey] = useState(null)
   const [showGate, setShowGate] = useState(true) // Always show gate first
+  const [strangerAvatarSeed, setStrangerAvatarSeed] = useState(null) // Stable avatar seed
   const chatRef = useRef(null)
   const pollRef = useRef(null)
 
@@ -205,6 +206,7 @@ function HomeContent() {
       
       setStatus(data.status)
       setPartner(data.partner || null)
+      if (data.partner) setStrangerAvatarSeed(data.partner.name || 'stranger-' + Date.now())
       
       if (data.status === 'active') {
         const msgRes = await fetch(`${API_BASE}/api/messages`, {
@@ -229,6 +231,7 @@ function HomeContent() {
         })
         setMessages([])
         setPartner(null)
+        setStrangerAvatarSeed(null)
       }
       
       const res = await fetch(`${API_BASE}/api/join`, {
@@ -238,7 +241,10 @@ function HomeContent() {
       const data = await res.json()
       if (data.success) {
         setStatus(data.status)
-        if (data.partner) setPartner({ name: data.partner })
+        if (data.partner) {
+          setPartner({ name: data.partner })
+          setStrangerAvatarSeed(data.partner)
+        }
       }
     } catch (e) {}
     setFinding(false)
@@ -254,6 +260,7 @@ function HomeContent() {
       setStatus('idle')
       setMessages([])
       setPartner(null)
+      setStrangerAvatarSeed(null)
     } catch (e) {}
   }
 
@@ -398,7 +405,7 @@ function HomeContent() {
               <div className="video-frame" style={styles.videoFrame}>
                 <div style={styles.noSignal}>
                   {status === 'active' ? (
-                    <img src={getAvatarUrl(partner?.name || 'stranger')} alt="Stranger" style={styles.avatarGif} />
+                    <img src={getAvatarUrl(strangerAvatarSeed || 'stranger')} alt="Stranger" style={styles.avatarGif} />
                   ) : status === 'waiting' ? (
                     <div style={styles.loadingDots}>...</div>
                   ) : (
