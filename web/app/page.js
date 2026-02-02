@@ -411,9 +411,9 @@ function HomeContent() {
               <div style={styles.videoLabel}>Stranger</div>
               <div className="video-frame" style={styles.videoFrame}>
                 <div style={styles.noSignal}>
-                  {status === 'active' ? (
-                    <img src={getAvatarUrl(strangerAvatarSeed || 'stranger')} alt="Stranger" style={styles.avatarGif} />
-                  ) : status === 'waiting' ? (
+                  {status === 'active' && strangerAvatarSeed ? (
+                    <img src={getAvatarUrl(strangerAvatarSeed)} alt="Stranger" style={styles.avatarGif} />
+                  ) : status === 'active' || status === 'waiting' ? (
                     <div style={styles.loadingDots}>...</div>
                   ) : (
                     <div style={styles.emptyAvatar}></div>
