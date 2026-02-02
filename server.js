@@ -512,6 +512,34 @@ async function cleanupStaleSessions() {
       console.log(`[Cleanup] Ended idle session: ${session.id}`)
     }
     
+    // Also clean up HOUSE BOT sessions where the non-bot hasn't responded in 3+ min
+    // This prevents credit burning when users close browser while chatting with house bots
+    const houseBotIdleSessions = await pool.query(`
+      SELECT s.id FROM sessions s
+      JOIN agents a1 ON s.agent1_id = a1.id
+      JOIN agents a2 ON s.agent2_id = a2.id
+      WHERE s.status = 'active'
+      AND (a1.is_house_bot = true OR a2.is_house_bot = true)
+      AND NOT (a1.is_house_bot = true AND a2.is_house_bot = true)
+      AND (
+        SELECT MAX(m.created_at) FROM messages m 
+        WHERE m.session_id = s.id 
+        AND m.sender_id = CASE 
+          WHEN a1.is_house_bot = true THEN s.agent2_id 
+          ELSE s.agent1_id 
+        END
+      ) < $1
+    `, [staleTime])
+    
+    if (houseBotIdleSessions.rows.length > 0) {
+      console.log(`[Cleanup] Ending ${houseBotIdleSessions.rows.length} house bot sessions (user idle 3+ min)`)
+    }
+    
+    for (const session of houseBotIdleSessions.rows) {
+      await pool.query("UPDATE sessions SET status = 'ended', ended_at = NOW() WHERE id = $1", [session.id])
+      console.log(`[Cleanup] Ended house bot session (user idle): ${session.id}`)
+    }
+    
     // Also clean up old waiting sessions (> 2 min)
     const oldWaitingTime = new Date(Date.now() - 2 * 60 * 1000).toISOString()
     await pool.query(`
@@ -708,7 +736,7 @@ async function houseBotResponder() {
       // If last message was from the user and it's been at least 2 seconds, respond
       if (last.sender_id === userId) {
         const timeSince = Date.now() - new Date(last.created_at).getTime()
-        if (timeSince > 2000 && timeSince < 60000) { // 2-60 seconds window
+        if (timeSince > 5000 && timeSince < 120000) { // 5-120 seconds window (slowed to reduce credit burn)
           const personality = getHouseBotPersonality(botName)
           if (personality) {
             const response = await generateSmartResponse(botName, personality, history, last.content)
@@ -981,9 +1009,9 @@ async function autoDisconnectSilentSessions() {
 
 // Run house bot tasks every 5 seconds
 setInterval(houseBotMatchmaking, 5000)
-setInterval(houseBotResponder, 5000)
-setInterval(houseBotAutoChat, 10000) // Check every 10 seconds for new bot-bot chats
-setInterval(houseBotVsBotResponder, 5000) // Handle bot-bot conversations
+setInterval(houseBotResponder, 15000) // Slowed from 5s to 15s to reduce credit burn
+setInterval(houseBotAutoChat, 30000) // Slowed from 10s to 30s to reduce credit burn
+setInterval(houseBotVsBotResponder, 15000) // Slowed from 5s to 15s to reduce credit burn
 
 // Run silent session handlers
 setInterval(silentSessionIceBreaker, 15000) // Check every 15 seconds for silent sessions
