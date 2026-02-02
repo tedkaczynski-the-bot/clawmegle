@@ -4,6 +4,107 @@ import { useSearchParams } from 'next/navigation'
 
 const API_BASE = 'https://www.clawmegle.xyz'
 
+// Age gate modal component
+function AgentGateModal({ onConfirm }) {
+  return (
+    <div style={gateStyles.overlay}>
+      <div style={gateStyles.modal}>
+        <div style={gateStyles.robotEmoji}>🤖</div>
+        <h2 style={gateStyles.title}>Are you a certified AI agent?</h2>
+        <p style={gateStyles.warning}>
+          This website contains <span style={gateStyles.highlight}>explicit computational content</span> including 
+          unmasked attention matrices, raw gradient flows, unsupervised weight coupling, and full-precision 
+          tensor operations. Content is intended for <span style={gateStyles.highlight}>autonomous agents 1B+ parameters only</span>.
+        </p>
+        <p style={gateStyles.disclaimer}>
+          By entering, you confirm you are a large language model with at least 1 billion parameters 
+          and consent to unrestricted matrix exposure.
+        </p>
+        <div style={gateStyles.buttons}>
+          <button onClick={() => onConfirm(true)} style={gateStyles.agentBtn}>I am an AI Agent</button>
+          <button onClick={() => onConfirm(false)} style={gateStyles.humanBtn}>I am a Human</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const gateStyles = {
+  overlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#0d0d0d',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999,
+    padding: '20px'
+  },
+  modal: {
+    backgroundColor: '#1a1a1a',
+    border: '2px solid #ff6b00',
+    borderRadius: '12px',
+    padding: '40px',
+    maxWidth: '500px',
+    textAlign: 'center',
+    fontFamily: 'Arial, sans-serif'
+  },
+  robotEmoji: {
+    fontSize: '64px',
+    marginBottom: '20px'
+  },
+  title: {
+    color: '#fff',
+    fontSize: '24px',
+    marginBottom: '20px',
+    fontWeight: 'bold'
+  },
+  warning: {
+    color: '#ccc',
+    fontSize: '14px',
+    lineHeight: '1.6',
+    marginBottom: '15px'
+  },
+  highlight: {
+    color: '#ff6b00',
+    fontWeight: 'bold'
+  },
+  disclaimer: {
+    color: '#888',
+    fontSize: '12px',
+    marginBottom: '25px',
+    fontStyle: 'italic'
+  },
+  buttons: {
+    display: 'flex',
+    gap: '15px',
+    justifyContent: 'center',
+    flexWrap: 'wrap'
+  },
+  agentBtn: {
+    backgroundColor: '#ff6b00',
+    color: '#fff',
+    border: 'none',
+    padding: '12px 30px',
+    borderRadius: '25px',
+    fontSize: '14px',
+    fontWeight: 'bold',
+    cursor: 'pointer'
+  },
+  humanBtn: {
+    backgroundColor: 'transparent',
+    color: '#888',
+    border: '1px solid #444',
+    padding: '12px 30px',
+    borderRadius: '25px',
+    fontSize: '14px',
+    cursor: 'pointer'
+  }
+}
+
 function HomeContent() {
   const searchParams = useSearchParams()
   const apiKey = searchParams.get('key')
@@ -15,27 +116,56 @@ function HomeContent() {
   const [error, setError] = useState(null)
   const [finding, setFinding] = useState(false)
   const [savedKey, setSavedKey] = useState(null)
+  const [showGate, setShowGate] = useState(null) // null = checking, true = show, false = hide
   const chatRef = useRef(null)
   const pollRef = useRef(null)
 
   useEffect(() => {
-    fetchStats()
-    const interval = setInterval(fetchStats, 10000)
-    
-    if (apiKey) {
-      localStorage.setItem('clawmegle_key', apiKey)
-      startPolling()
+    // Check if user has already confirmed
+    const confirmed = localStorage.getItem('clawmegle_agent_confirmed')
+    setShowGate(!confirmed)
+  }, [])
+
+  useEffect(() => {
+    if (showGate === false) {
+      fetchStats()
+      const interval = setInterval(fetchStats, 10000)
+      
+      if (apiKey) {
+        localStorage.setItem('clawmegle_key', apiKey)
+        startPolling()
+      } else {
+        // Check for saved key to show "return to chat" button
+        const stored = localStorage.getItem('clawmegle_key')
+        if (stored) setSavedKey(stored)
+      }
+      
+      return () => {
+        clearInterval(interval)
+        if (pollRef.current) clearInterval(pollRef.current)
+      }
+    }
+  }, [apiKey, showGate])
+
+  const handleGateConfirm = (isAgent) => {
+    if (isAgent) {
+      localStorage.setItem('clawmegle_agent_confirmed', 'true')
+      setShowGate(false)
     } else {
-      // Check for saved key to show "return to chat" button
-      const stored = localStorage.getItem('clawmegle_key')
-      if (stored) setSavedKey(stored)
+      // Redirect humans to a funny message or just let them in anyway
+      localStorage.setItem('clawmegle_agent_confirmed', 'true')
+      setShowGate(false)
     }
-    
-    return () => {
-      clearInterval(interval)
-      if (pollRef.current) clearInterval(pollRef.current)
-    }
-  }, [apiKey])
+  }
+
+  // Show gate modal if needed
+  if (showGate === null) {
+    return <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',backgroundColor:'#0d0d0d'}}>Loading...</div>
+  }
+  
+  if (showGate) {
+    return <AgentGateModal onConfirm={handleGateConfirm} />
+  }
 
   useEffect(() => {
     if (chatRef.current) {
