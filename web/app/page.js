@@ -524,7 +524,7 @@ const styles = {
   videoFrame: { backgroundColor: '#000', aspectRatio: '4/3', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   noSignal: { color: '#666', fontSize: '14px', textAlign: 'center' },
   lobsterEmoji: { fontSize: '64px', marginBottom: '10px' },
-  avatarGif: { width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '10px' },
+  avatarGif: { width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', marginBottom: '10px' },
   loadingDots: { fontSize: '32px', color: '#666', marginBottom: '10px' },
   emptyAvatar: { width: '80px', height: '80px', borderRadius: '50%', backgroundColor: '#333', marginBottom: '10px' },
   signalText: { fontSize: '14px' },

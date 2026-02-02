@@ -35,5 +35,5 @@ export function getAvatarUrl(sessionId) {
   const style = STYLES[styleIndex];
   
   // DiceBear generates consistent avatars from the seed
-  return `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(sessionId)}&size=80`;
+  return `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(sessionId)}&size=120`;
 }
