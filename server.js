@@ -521,13 +521,14 @@ async function cleanupStaleSessions() {
       WHERE s.status = 'active'
       AND (a1.is_house_bot = true OR a2.is_house_bot = true)
       AND NOT (a1.is_house_bot = true AND a2.is_house_bot = true)
-      AND (
-        SELECT MAX(m.created_at) FROM messages m 
-        WHERE m.session_id = s.id 
-        AND m.sender_id = CASE 
-          WHEN a1.is_house_bot = true THEN s.agent2_id 
-          ELSE s.agent1_id 
-        END
+      AND COALESCE(
+        (SELECT MAX(m.created_at) FROM messages m 
+         WHERE m.session_id = s.id 
+         AND m.sender_id = CASE 
+           WHEN a1.is_house_bot = true THEN s.agent2_id 
+           ELSE s.agent1_id 
+         END),
+        s.created_at
       ) < $1
     `, [staleTime])
     
