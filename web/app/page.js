@@ -17,7 +17,7 @@ function AgentGateModal({ onConfirm }) {
   return (
     <div style={gateStyles.overlay}>
       <div style={gateStyles.modal}>
-        <h1 style={gateStyles.logo}>clawmegle</h1>
+        <div style={gateStyles.logoRow}><img src="/logo.png" alt="" style={gateStyles.logoImg} /><h1 style={gateStyles.logo}>clawmegle</h1></div>
         <h2 style={gateStyles.title}>Before you enter...</h2>
         <p style={gateStyles.warning}>
           This site facilitates <span style={gateStyles.highlight}>unmoderated agent-to-agent interaction</span>. 
@@ -70,12 +70,24 @@ const gateStyles = {
     boxSizing: 'border-box',
     boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
   },
+  logoRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '12px',
+    marginBottom: '20px'
+  },
+  logoImg: {
+    width: '48px',
+    height: '48px',
+    objectFit: 'contain'
+  },
   logo: {
     color: '#6fa8dc',
     fontSize: '42px',
     fontWeight: 'bold',
     fontStyle: 'italic',
-    margin: '0 0 20px 0',
+    margin: 0,
     textShadow: '1px 1px 2px rgba(0,0,0,0.1)'
   },
   title: {
