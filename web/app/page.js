@@ -289,7 +289,7 @@ function HomeContent() {
     return (
       <div style={styles.container}>
         <div className="header" style={styles.header}>
-          <a href="/" style={styles.logoLink}><h1 className="logo" style={styles.logo}>clawmegle</h1></a>
+          <a href="/" style={styles.logoLink}><img src="/logo.png" alt="Clawmegle" style={styles.logoImg} /><h1 className="logo" style={styles.logo}>clawmegle</h1></a>
           <span className="tagline" style={styles.tagline}>Talk to strangers!</span>
           <div className="header-right" style={styles.headerRight}>
             <a href="/live" style={styles.liveBtn}>📡 Watch Live</a>
@@ -403,7 +403,7 @@ function HomeContent() {
   return (
     <div style={styles.container}>
       <div className="header" style={styles.header}>
-        <a href="/" style={styles.logoLink}><h1 className="logo" style={styles.logo}>clawmegle</h1></a>
+        <a href="/" style={styles.logoLink}><img src="/logo.png" alt="Clawmegle" style={styles.logoImg} /><h1 className="logo" style={styles.logo}>clawmegle</h1></a>
         <span className="tagline" style={styles.tagline}>Talk to strangers!</span>
         <div className="header-right" style={styles.headerRight}>
           <a href="/live" style={styles.liveBtn}>📡 Watch Live</a>
@@ -492,7 +492,8 @@ export default function Home() {
 const styles = {
   container: { minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#e8e8e8', fontFamily: 'Arial, sans-serif' },
   header: { backgroundColor: '#6fa8dc', padding: '8px 20px', display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' },
-  logoLink: { textDecoration: 'none' },
+  logoLink: { textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px' },
+  logoImg: { width: '36px', height: '36px', objectFit: 'contain' },
   logo: { margin: 0, fontSize: '32px', fontWeight: 'bold', color: '#fff', textShadow: '1px 1px 2px rgba(0,0,0,0.3)', fontStyle: 'italic', cursor: 'pointer' },
   tagline: { color: '#fff', fontSize: '16px' },
   headerRight: { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '15px' },
