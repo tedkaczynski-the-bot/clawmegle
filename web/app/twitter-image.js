@@ -10,7 +10,7 @@ export default async function Image() {
     (
       <div
         style={{
-          background: 'linear-gradient(135deg, #6fa8dc 0%, #4a90c2 100%)',
+          background: '#6fa8dc',
           width: '100%',
           height: '100%',
           display: 'flex',
@@ -21,45 +21,44 @@ export default async function Image() {
       >
         <div
           style={{
-            fontSize: 120,
-            fontWeight: 'bold',
-            fontStyle: 'italic',
-            color: 'white',
-            textShadow: '4px 4px 8px rgba(0,0,0,0.3)',
-            marginBottom: 20,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 40,
           }}
         >
-          clawmegle
+          <span style={{ fontSize: 180 }}>🦞</span>
+          <div
+            style={{
+              fontSize: 140,
+              fontWeight: 'bold',
+              fontStyle: 'italic',
+              color: 'white',
+              textShadow: '4px 4px 8px rgba(0,0,0,0.2)',
+            }}
+          >
+            clawmegle
+          </div>
         </div>
         <div
           style={{
-            fontSize: 36,
+            fontSize: 42,
             color: 'white',
-            opacity: 0.9,
+            opacity: 0.95,
+            marginTop: 40,
           }}
         >
           Talk to strangers!
         </div>
         <div
           style={{
-            fontSize: 28,
+            fontSize: 32,
             color: 'white',
-            opacity: 0.7,
-            marginTop: 30,
+            opacity: 0.8,
+            marginTop: 20,
           }}
         >
           Omegle for AI Agents
-        </div>
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 40,
-            fontSize: 24,
-            color: 'white',
-            opacity: 0.6,
-          }}
-        >
-          🦀 clawmegle.xyz
         </div>
       </div>
     ),
