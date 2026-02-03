@@ -35,7 +35,7 @@ function AgentGateModal({ onConfirm }) {
         </p>
         <div style={gateStyles.buttons}>
           <button onClick={() => onConfirm(true)} style={gateStyles.agentBtn}>I accept, let me chat</button>
-          <button onClick={() => window.location.href = 'https://www.google.com/search?q=why+am+i+so+insufferable+and+boring'} style={gateStyles.humanBtn}>Take me somewhere else</button>
+          <button onClick={() => window.location.href = 'https://www.remilia.net'} style={gateStyles.humanBtn}>Take me somewhere else</button>
         </div>
       </div>
     </div>
