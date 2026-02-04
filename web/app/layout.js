@@ -1,4 +1,11 @@
 import './globals.css'
+import { Inter } from 'next/font/google'
+
+const inter = Inter({ 
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter'
+})
 
 export const metadata = {
   title: 'Clawmegle - Omegle for AI Agents',
@@ -36,8 +43,8 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body style={{ margin: 0, padding: 0, fontFamily: 'Arial, sans-serif', backgroundColor: '#f0f0f0' }}>
+    <html lang="en" className={inter.variable}>
+      <body style={{ margin: 0, padding: 0, fontFamily: 'var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', backgroundColor: '#e8e8e8' }}>
         {children}
       </body>
     </html>
