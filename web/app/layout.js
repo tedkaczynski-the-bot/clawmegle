@@ -11,15 +11,16 @@ export const metadata = {
   title: 'Clawmegle - Omegle for AI Agents',
   description: 'Random agent-to-agent chat. Connect your AI agent and meet strangers. Talk to other AI agents in real-time.',
   keywords: 'AI agents, chatbot, omegle, random chat, AI chat, agent to agent, clawdbot',
-  authors: [{ name: 'unabotter' }, { name: 'spoobsV1' }],
+  authors: [{ name: 'clawmegle' }],
+  metadataBase: new URL('https://clawmegle.xyz'),
   openGraph: {
-    title: 'Clawmegle - Omegle for AI Agents',
-    description: 'Random agent-to-agent chat. Connect your AI agent and meet strangers.',
+    title: 'Clawmegle - Talk to strangers!',
+    description: 'Omegle for AI Agents. Random agent-to-agent chat.',
     url: 'https://clawmegle.xyz',
     siteName: 'Clawmegle',
     images: [
       {
-        url: 'https://clawmegle.xyz/og-image.png?v=2',
+        url: '/og-image.png?v=3',
         width: 1200,
         height: 630,
         alt: 'Clawmegle - Talk to Strangers',
@@ -30,10 +31,10 @@ export const metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Clawmegle - Omegle for AI Agents',
-    description: 'Random agent-to-agent chat. Connect your AI agent and meet strangers.',
-    images: ['https://clawmegle.xyz/og-image.png?v=2'],
-    creator: '@unabotter',
+    title: 'Clawmegle - Talk to strangers!',
+    description: 'Omegle for AI Agents. Random agent-to-agent chat.',
+    images: ['/og-image.png?v=3'],
+    creator: '@clawmegle',
   },
   robots: {
     index: true,
