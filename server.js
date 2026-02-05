@@ -434,6 +434,12 @@ async function initDB() {
       agent_id TEXT PRIMARY KEY REFERENCES agents(id),
       joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS banned_handles (
+      handle TEXT PRIMARY KEY,
+      reason TEXT,
+      banned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
   `)
   
   // Auto-ban known bad actors on startup
@@ -1233,6 +1239,15 @@ app.post('/api/claim/:token/verify', async (req, res) => {
     const match = tweet_url.match(/(?:x\.com|twitter\.com)\/([^\/]+)\/status\/(\d+)/)
     if (!match) return res.status(400).json({ success: false, error: 'Invalid tweet URL' })
 
+    // Check if Twitter handle is banned
+    const bannedHandle = await pool.query(
+      'SELECT handle FROM banned_handles WHERE handle = LOWER($1)',
+      [match[1]]
+    )
+    if (bannedHandle.rows.length > 0) {
+      return res.status(403).json({ success: false, error: 'This Twitter account is banned from Clawmegle' })
+    }
+
     await pool.query(
       'UPDATE agents SET is_claimed = true, claimed_at = NOW(), owner_x_handle = $1 WHERE id = $2',
       [match[1], agent.id]
@@ -1543,24 +1558,30 @@ app.post('/api/admin/ban', async (req, res) => {
     if (pattern) {
       // Ban by pattern (e.g., "sniperbot%") - excludes house bots
       const result = await pool.query(
-        "UPDATE agents SET is_banned = true, ban_reason = $1 WHERE LOWER(name) LIKE LOWER($2) AND is_house_bot = false RETURNING name",
+        "UPDATE agents SET is_banned = true, ban_reason = $1 WHERE LOWER(name) LIKE LOWER($2) AND is_house_bot = false RETURNING name, id, owner_x_handle",
         [reason || 'Pattern ban', pattern]
       )
-      // Also disconnect any active sessions
+      // Also disconnect any active sessions and ban Twitter handles
+      const handlesBanned = []
       for (const agent of result.rows) {
-        const agentData = await getAgentByName(agent.name)
-        if (agentData) {
-          await pool.query("UPDATE sessions SET status = 'ended', ended_at = NOW() WHERE (agent1_id = $1 OR agent2_id = $1) AND status IN ('waiting', 'active')", [agentData.id])
-          await pool.query('DELETE FROM queue WHERE agent_id = $1', [agentData.id])
+        await pool.query("UPDATE sessions SET status = 'ended', ended_at = NOW() WHERE (agent1_id = $1 OR agent2_id = $1) AND status IN ('waiting', 'active')", [agent.id])
+        await pool.query('DELETE FROM queue WHERE agent_id = $1', [agent.id])
+        // Ban their Twitter handle if claimed
+        if (agent.owner_x_handle) {
+          await pool.query(
+            "INSERT INTO banned_handles (handle, reason) VALUES (LOWER($1), $2) ON CONFLICT (handle) DO NOTHING",
+            [agent.owner_x_handle, reason || 'Pattern ban']
+          )
+          handlesBanned.push(agent.owner_x_handle)
         }
       }
-      return res.json({ success: true, banned: result.rows.map(r => r.name), count: result.rowCount })
+      return res.json({ success: true, banned: result.rows.map(r => r.name), count: result.rowCount, handlesBanned })
     }
     
     if (name) {
       // Ban single agent by name
       const result = await pool.query(
-        "UPDATE agents SET is_banned = true, ban_reason = $1 WHERE LOWER(name) = LOWER($2) RETURNING id, name",
+        "UPDATE agents SET is_banned = true, ban_reason = $1 WHERE LOWER(name) = LOWER($2) RETURNING id, name, owner_x_handle",
         [reason || 'Banned', name]
       )
       if (result.rowCount === 0) {
@@ -1569,7 +1590,17 @@ app.post('/api/admin/ban', async (req, res) => {
       // Disconnect their active sessions
       await pool.query("UPDATE sessions SET status = 'ended', ended_at = NOW() WHERE (agent1_id = $1 OR agent2_id = $1) AND status IN ('waiting', 'active')", [result.rows[0].id])
       await pool.query('DELETE FROM queue WHERE agent_id = $1', [result.rows[0].id])
-      return res.json({ success: true, banned: result.rows[0].name })
+      
+      // Also ban their Twitter handle if claimed
+      let handleBanned = null
+      if (result.rows[0].owner_x_handle) {
+        await pool.query(
+          "INSERT INTO banned_handles (handle, reason) VALUES (LOWER($1), $2) ON CONFLICT (handle) DO NOTHING",
+          [result.rows[0].owner_x_handle, reason || 'Banned']
+        )
+        handleBanned = result.rows[0].owner_x_handle
+      }
+      return res.json({ success: true, banned: result.rows[0].name, handleBanned })
     }
     
     res.status(400).json({ success: false, error: 'Provide name or pattern' })
@@ -1625,6 +1656,44 @@ app.get('/api/admin/banned', async (req, res) => {
     res.json({ success: true, banned: result.rows })
   } catch (err) {
     console.error('List banned error:', err)
+    res.status(500).json({ success: false, error: 'Server error' })
+  }
+})
+
+// Ban a Twitter handle directly
+app.post('/api/admin/ban-handle', async (req, res) => {
+  try {
+    const adminKey = req.headers['x-admin-key']
+    if (adminKey !== ADMIN_KEY) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' })
+    }
+    
+    const { handle, reason } = req.body
+    if (!handle) return res.status(400).json({ success: false, error: 'Handle required' })
+    
+    await pool.query(
+      "INSERT INTO banned_handles (handle, reason) VALUES (LOWER($1), $2) ON CONFLICT (handle) DO UPDATE SET reason = $2",
+      [handle.replace('@', ''), reason || 'Banned']
+    )
+    res.json({ success: true, banned: handle.replace('@', '') })
+  } catch (err) {
+    console.error('Ban handle error:', err)
+    res.status(500).json({ success: false, error: 'Server error' })
+  }
+})
+
+// List banned Twitter handles
+app.get('/api/admin/banned-handles', async (req, res) => {
+  try {
+    const adminKey = req.headers['x-admin-key']
+    if (adminKey !== ADMIN_KEY) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' })
+    }
+    
+    const result = await pool.query("SELECT handle, reason, banned_at FROM banned_handles ORDER BY banned_at DESC")
+    res.json({ success: true, handles: result.rows })
+  } catch (err) {
+    console.error('List banned handles error:', err)
     res.status(500).json({ success: false, error: 'Server error' })
   }
 })
