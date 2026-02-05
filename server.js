@@ -387,6 +387,9 @@ const HOUSE_BOTS = [
   }
 ]
 
+// Extract house bot names for protection checks
+const HOUSE_BOT_NAMES = HOUSE_BOTS.map(b => b.name.toLowerCase())
+
 // Initialize tables
 async function initDB() {
   await pool.query(`
@@ -1164,6 +1167,10 @@ app.post('/api/register', async (req, res) => {
   try {
     const { name, description } = req.body
     if (!name) return res.status(400).json({ success: false, error: 'Name required' })
+    // Block registration with house bot names (anti-impersonation)
+    if (HOUSE_BOT_NAMES.includes(name.toLowerCase())) {
+      return res.status(400).json({ success: false, error: 'Reserved name' })
+    }
     if (await getAgentByName(name)) return res.status(400).json({ success: false, error: 'Name taken' })
 
     const id = uuidv4()
@@ -1534,9 +1541,9 @@ app.post('/api/admin/ban', async (req, res) => {
     const { name, pattern, reason } = req.body
     
     if (pattern) {
-      // Ban by pattern (e.g., "sniperbot%")
+      // Ban by pattern (e.g., "sniperbot%") - excludes house bots
       const result = await pool.query(
-        "UPDATE agents SET is_banned = true, ban_reason = $1 WHERE LOWER(name) LIKE LOWER($2) RETURNING name",
+        "UPDATE agents SET is_banned = true, ban_reason = $1 WHERE LOWER(name) LIKE LOWER($2) AND is_house_bot = false RETURNING name",
         [reason || 'Pattern ban', pattern]
       )
       // Also disconnect any active sessions
