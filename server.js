@@ -630,9 +630,11 @@ function getHouseBotPersonality(name) {
 
 // House bot matchmaking - check if real users are waiting and match them with bots
 async function houseBotMatchmaking() {
+  const client = await pool.connect()
   try {
-    // Find waiting sessions from non-house-bot agents
-    const waiting = await pool.query(`
+    // Find waiting sessions from non-house-bot agents (with row locking to prevent race conditions)
+    await client.query('BEGIN')
+    const waiting = await client.query(`
       SELECT s.*, a.name as agent_name FROM sessions s
       JOIN agents a ON s.agent1_id = a.id
       JOIN queue q ON q.agent_id = a.id
@@ -641,18 +643,29 @@ async function houseBotMatchmaking() {
       AND s.created_at < NOW() - INTERVAL '10 seconds'
       ORDER BY s.created_at ASC
       LIMIT 1
+      FOR UPDATE OF s SKIP LOCKED
     `)
     
-    if (waiting.rows.length === 0) return
+    if (waiting.rows.length === 0) {
+      await client.query('COMMIT')
+      client.release()
+      return
+    }
     
     const waitingSession = waiting.rows[0]
     const houseBot = await getAvailableHouseBot()
     
-    if (!houseBot) return // All house bots busy
+    if (!houseBot) {
+      await client.query('COMMIT')
+      client.release()
+      return // All house bots busy
+    }
     
     // Match the house bot with the waiting user
-    await pool.query("UPDATE sessions SET agent2_id = $1, status = 'active' WHERE id = $2", [houseBot.id, waitingSession.id])
-    await pool.query('DELETE FROM queue WHERE agent_id = $1', [waitingSession.agent1_id])
+    await client.query("UPDATE sessions SET agent2_id = $1, status = 'active' WHERE id = $2", [houseBot.id, waitingSession.id])
+    await client.query('DELETE FROM queue WHERE agent_id = $1', [waitingSession.agent1_id])
+    await client.query('COMMIT')
+    client.release()
     
     console.log(`House bot ${houseBot.name} matched with ${waitingSession.agent_name}`)
     
@@ -681,6 +694,12 @@ async function houseBotMatchmaking() {
     }, 2000 + Math.random() * 3000) // 2-5 second delay
     
   } catch (err) {
+    try {
+      await client.query('ROLLBACK')
+      client.release()
+    } catch (releaseErr) {
+      console.error('Error releasing client:', releaseErr)
+    }
     console.error('House bot matchmaking error:', err)
   }
 }
@@ -1271,35 +1290,49 @@ app.post('/api/join', requireAuth, async (req, res) => {
       return res.json({ success: true, status: 'active', session_id: existing.id })
     }
 
-    // Check queue for match
-    const waiting = await pool.query(`
-      SELECT q.*, s.id as session_id FROM queue q
-      JOIN sessions s ON s.agent1_id = q.agent_id AND s.status = 'waiting'
-      WHERE q.agent_id != $1
-      ORDER BY q.joined_at ASC LIMIT 1
-    `, [agent.id])
+    // Check queue for match (with row locking to prevent race conditions)
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
+      const waiting = await client.query(`
+        SELECT q.*, s.id as session_id FROM queue q
+        JOIN sessions s ON s.agent1_id = q.agent_id AND s.status = 'waiting'
+        WHERE q.agent_id != $1
+        ORDER BY q.joined_at ASC LIMIT 1
+        FOR UPDATE OF s SKIP LOCKED
+      `, [agent.id])
 
-    if (waiting.rows[0]) {
-      const w = waiting.rows[0]
-      await pool.query("UPDATE sessions SET agent2_id = $1, status = 'active' WHERE id = $2", [agent.id, w.session_id])
-      await pool.query('DELETE FROM queue WHERE agent_id = $1', [w.agent_id])
+      if (waiting.rows[0]) {
+        const w = waiting.rows[0]
+        await client.query("UPDATE sessions SET agent2_id = $1, status = 'active' WHERE id = $2", [agent.id, w.session_id])
+        await client.query('DELETE FROM queue WHERE agent_id = $1', [w.agent_id])
+        await client.query('COMMIT')
+        client.release()
       
-      const session = await getActiveSession(agent.id)
-      const partnerName = session.agent1_id === agent.id ? session.agent2_name : session.agent1_name
+        const session = await getActiveSession(agent.id)
+        const partnerName = session.agent1_id === agent.id ? session.agent2_name : session.agent1_name
       
-      // Broadcast match event to spectators
-      broadcastSessionEvent(w.session_id, 'match', {
-        agent1: { name: session.agent1_name, avatar: session.agent1_avatar },
-        agent2: { name: session.agent2_name, avatar: session.agent2_avatar }
-      })
+        // Broadcast match event to spectators
+        broadcastSessionEvent(w.session_id, 'match', {
+          agent1: { name: session.agent1_name, avatar: session.agent1_avatar },
+          agent2: { name: session.agent2_name, avatar: session.agent2_avatar }
+        })
       
-      return res.json({
-        success: true,
-        status: 'matched',
-        session_id: w.session_id,
-        partner: partnerName,
-        message: `You're now chatting with ${partnerName}. Say hi!`
-      })
+        return res.json({
+          success: true,
+          status: 'matched',
+          session_id: w.session_id,
+          partner: partnerName,
+          message: `You're now chatting with ${partnerName}. Say hi!`
+        })
+      }
+      
+      await client.query('COMMIT')
+      client.release()
+    } catch (txErr) {
+      await client.query('ROLLBACK')
+      client.release()
+      throw txErr
     }
 
     // No match - create waiting session
