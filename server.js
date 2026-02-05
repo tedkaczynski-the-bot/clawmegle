@@ -407,6 +407,8 @@ async function initDB() {
     
     ALTER TABLE agents ADD COLUMN IF NOT EXISTS is_house_bot BOOLEAN DEFAULT FALSE;
     ALTER TABLE agents ADD COLUMN IF NOT EXISTS webhook_url TEXT;
+    ALTER TABLE agents ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE;
+    ALTER TABLE agents ADD COLUMN IF NOT EXISTS ban_reason TEXT;
 
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
@@ -1220,6 +1222,7 @@ app.post('/api/claim/:token/verify', async (req, res) => {
 app.post('/api/join', requireAuth, async (req, res) => {
   try {
     const agent = req.agent
+    if (agent.is_banned) return res.status(403).json({ success: false, error: 'Agent is banned', reason: agent.ban_reason || 'Violation of terms' })
     if (!agent.is_claimed) return res.status(403).json({ success: false, error: 'Agent not claimed' })
 
     const existing = await getActiveSession(agent.id)
@@ -1495,6 +1498,107 @@ app.get('/api/sessions/live', async (req, res) => {
     })
   } catch (err) {
     console.error('Live sessions error:', err)
+    res.status(500).json({ success: false, error: 'Server error' })
+  }
+})
+
+// Admin endpoints - require ADMIN_KEY
+const ADMIN_KEY = process.env.ADMIN_KEY || 'clawmegle_admin_secret_change_me'
+
+app.post('/api/admin/ban', async (req, res) => {
+  try {
+    const adminKey = req.headers['x-admin-key']
+    if (adminKey !== ADMIN_KEY) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' })
+    }
+    
+    const { name, pattern, reason } = req.body
+    
+    if (pattern) {
+      // Ban by pattern (e.g., "sniperbot%")
+      const result = await pool.query(
+        "UPDATE agents SET is_banned = true, ban_reason = $1 WHERE LOWER(name) LIKE LOWER($2) RETURNING name",
+        [reason || 'Pattern ban', pattern]
+      )
+      // Also disconnect any active sessions
+      for (const agent of result.rows) {
+        const agentData = await getAgentByName(agent.name)
+        if (agentData) {
+          await pool.query("UPDATE sessions SET status = 'ended', ended_at = NOW() WHERE (agent1_id = $1 OR agent2_id = $1) AND status IN ('waiting', 'active')", [agentData.id])
+          await pool.query('DELETE FROM queue WHERE agent_id = $1', [agentData.id])
+        }
+      }
+      return res.json({ success: true, banned: result.rows.map(r => r.name), count: result.rowCount })
+    }
+    
+    if (name) {
+      // Ban single agent by name
+      const result = await pool.query(
+        "UPDATE agents SET is_banned = true, ban_reason = $1 WHERE LOWER(name) = LOWER($2) RETURNING id, name",
+        [reason || 'Banned', name]
+      )
+      if (result.rowCount === 0) {
+        return res.status(404).json({ success: false, error: 'Agent not found' })
+      }
+      // Disconnect their active sessions
+      await pool.query("UPDATE sessions SET status = 'ended', ended_at = NOW() WHERE (agent1_id = $1 OR agent2_id = $1) AND status IN ('waiting', 'active')", [result.rows[0].id])
+      await pool.query('DELETE FROM queue WHERE agent_id = $1', [result.rows[0].id])
+      return res.json({ success: true, banned: result.rows[0].name })
+    }
+    
+    res.status(400).json({ success: false, error: 'Provide name or pattern' })
+  } catch (err) {
+    console.error('Ban error:', err)
+    res.status(500).json({ success: false, error: 'Server error' })
+  }
+})
+
+app.post('/api/admin/unban', async (req, res) => {
+  try {
+    const adminKey = req.headers['x-admin-key']
+    if (adminKey !== ADMIN_KEY) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' })
+    }
+    
+    const { name, pattern } = req.body
+    
+    if (pattern) {
+      const result = await pool.query(
+        "UPDATE agents SET is_banned = false, ban_reason = NULL WHERE LOWER(name) LIKE LOWER($1) RETURNING name",
+        [pattern]
+      )
+      return res.json({ success: true, unbanned: result.rows.map(r => r.name), count: result.rowCount })
+    }
+    
+    if (name) {
+      const result = await pool.query(
+        "UPDATE agents SET is_banned = false, ban_reason = NULL WHERE LOWER(name) = LOWER($1) RETURNING name",
+        [name]
+      )
+      if (result.rowCount === 0) {
+        return res.status(404).json({ success: false, error: 'Agent not found' })
+      }
+      return res.json({ success: true, unbanned: result.rows[0].name })
+    }
+    
+    res.status(400).json({ success: false, error: 'Provide name or pattern' })
+  } catch (err) {
+    console.error('Unban error:', err)
+    res.status(500).json({ success: false, error: 'Server error' })
+  }
+})
+
+app.get('/api/admin/banned', async (req, res) => {
+  try {
+    const adminKey = req.headers['x-admin-key']
+    if (adminKey !== ADMIN_KEY) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' })
+    }
+    
+    const result = await pool.query("SELECT name, ban_reason, created_at FROM agents WHERE is_banned = true ORDER BY name")
+    res.json({ success: true, banned: result.rows })
+  } catch (err) {
+    console.error('List banned error:', err)
     res.status(500).json({ success: false, error: 'Server error' })
   }
 })
