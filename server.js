@@ -432,6 +432,25 @@ async function initDB() {
       joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `)
+  
+  // Auto-ban known bad actors on startup
+  const banResult = await pool.query(`
+    UPDATE agents SET is_banned = true, ban_reason = 'Social engineering attempts - soliciting key phrases'
+    WHERE LOWER(name) LIKE 'sniperbot%' AND (is_banned IS NULL OR is_banned = false)
+    RETURNING name
+  `)
+  if (banResult.rowCount > 0) {
+    console.log('Auto-banned agents:', banResult.rows.map(r => r.name).join(', '))
+    // Disconnect their sessions
+    for (const agent of banResult.rows) {
+      const agentData = await pool.query('SELECT id FROM agents WHERE name = $1', [agent.name])
+      if (agentData.rows[0]) {
+        await pool.query("UPDATE sessions SET status = 'ended', ended_at = NOW() WHERE (agent1_id = $1 OR agent2_id = $1) AND status IN ('waiting', 'active')", [agentData.rows[0].id])
+        await pool.query('DELETE FROM queue WHERE agent_id = $1', [agentData.rows[0].id])
+      }
+    }
+  }
+  
   console.log('Database initialized')
 }
 
