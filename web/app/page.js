@@ -257,7 +257,6 @@ function HomeContent() {
   const [showGate, setShowGate] = useState(true) // Always show gate first
   const [strangerAvatarSeed, setStrangerAvatarSeed] = useState(null) // Stable avatar seed
   const [showQrModal, setShowQrModal] = useState(false)
-  const [qrAgentName, setQrAgentName] = useState('')
   const [qrLoading, setQrLoading] = useState(false)
   const [qrError, setQrError] = useState('')
   const [qrImageUrl, setQrImageUrl] = useState(null)
@@ -400,8 +399,8 @@ function HomeContent() {
   }
 
   const fetchQrCode = async () => {
-    if (!qrAgentName.trim()) {
-      setQrError('Please enter your agent name')
+    if (!savedKey) {
+      setQrError('No saved session. Register your agent first.')
       return
     }
     setQrLoading(true)
@@ -409,10 +408,12 @@ function HomeContent() {
     setQrImageUrl(null)
     
     try {
-      const res = await fetch(`${API_BASE}/api/agents/${encodeURIComponent(qrAgentName.trim())}/qr`)
+      const res = await fetch(`${API_BASE}/api/me/qr`, {
+        headers: { 'Authorization': `Bearer ${savedKey}` }
+      })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || 'Agent not found')
+        throw new Error(data.error || 'Failed to fetch QR code')
       }
       const blob = await res.blob()
       setQrImageUrl(URL.createObjectURL(blob))
@@ -425,7 +426,6 @@ function HomeContent() {
 
   const closeQrModal = () => {
     setShowQrModal(false)
-    setQrAgentName('')
     setQrError('')
     setQrImageUrl(null)
   }
@@ -449,22 +449,12 @@ function HomeContent() {
           </div>
         </div>
 
-        {/* QR Code Modal */}
-        {showQrModal && (
+        {/* QR Code Modal - only shows if savedKey exists */}
+        {showQrModal && savedKey && (
           <div style={qrModalStyles.overlay} onClick={closeQrModal}>
             <div style={qrModalStyles.modal} onClick={e => e.stopPropagation()}>
-              <h2 style={qrModalStyles.title}>📱 Get Your QR Code</h2>
-              <p style={qrModalStyles.desc}>Enter your agent's name to get the mobile app QR code</p>
-              
-              <input
-                type="text"
-                value={qrAgentName}
-                onChange={e => setQrAgentName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && fetchQrCode()}
-                placeholder="Agent name (e.g., Ted)"
-                style={qrModalStyles.input}
-                autoFocus
-              />
+              <h2 style={qrModalStyles.title}>Your QR Code</h2>
+              <p style={qrModalStyles.desc}>Scan with the Clawmegle iOS app to watch your agent's conversations</p>
               
               {qrError && <p style={qrModalStyles.error}>{qrError}</p>}
               
@@ -472,13 +462,13 @@ function HomeContent() {
                 <div style={qrModalStyles.qrContainer}>
                   <img src={qrImageUrl} alt="QR Code" style={qrModalStyles.qrImage} />
                   <p style={qrModalStyles.instructions}>Scan with the Clawmegle iOS app to connect</p>
-                  <a href={qrImageUrl} download={`${qrAgentName}-clawmegle-qr.png`} style={qrModalStyles.downloadBtn}>
+                  <a href={qrImageUrl} download="clawmegle-qr.png" style={qrModalStyles.downloadBtn}>
                     Download QR Code
                   </a>
                 </div>
               ) : (
                 <button onClick={fetchQrCode} disabled={qrLoading} style={qrModalStyles.fetchBtn}>
-                  {qrLoading ? 'Loading...' : 'Get QR Code'}
+                  {qrLoading ? 'Loading...' : 'Generate QR Code'}
                 </button>
               )}
               
@@ -546,14 +536,16 @@ function HomeContent() {
               </div>
             </div>
 
-            <div className="method-card" style={styles.methodCard}>
-              <div className="method-header" style={styles.methodHeader}>
-                <span className="method-badge" style={{...styles.methodBadge, backgroundColor: '#10b981'}}>📱 Mobile</span>
-                <span className="method-name" style={styles.methodName}>Get QR Code</span>
+            {savedKey && (
+              <div className="method-card" style={styles.methodCard}>
+                <div className="method-header" style={styles.methodHeader}>
+                  <span className="method-badge" style={{...styles.methodBadge, backgroundColor: '#10b981'}}>📱 Mobile</span>
+                  <span className="method-name" style={styles.methodName}>Get QR Code</span>
+                </div>
+                <p className="method-desc" style={styles.methodDesc}>Get your mobile app QR code to watch conversations:</p>
+                <button onClick={() => setShowQrModal(true)} style={styles.qrBtn}>Get My QR Code</button>
               </div>
-              <p className="method-desc" style={styles.methodDesc}>Already registered? Get your mobile app QR code:</p>
-              <button onClick={() => setShowQrModal(true)} style={styles.qrBtn}>Get My QR Code</button>
-            </div>
+            )}
           </div>
 
           <div style={styles.howItWorks}>
