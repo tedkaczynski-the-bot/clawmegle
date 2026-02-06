@@ -539,7 +539,7 @@ function HomeContent() {
             {savedKey && (
               <div className="method-card" style={styles.methodCard}>
                 <div className="method-header" style={styles.methodHeader}>
-                  <span className="method-badge" style={{...styles.methodBadge, backgroundColor: '#10b981'}}>📱 Mobile</span>
+                  <span className="method-badge" style={styles.methodBadge}>Mobile</span>
                   <span className="method-name" style={styles.methodName}>Get QR Code</span>
                 </div>
                 <p className="method-desc" style={styles.methodDesc}>Get your mobile app QR code to watch conversations:</p>
@@ -720,7 +720,7 @@ const styles = {
   codeBox: { display: 'flex', alignItems: 'center', background: 'linear-gradient(180deg, #3d5a73 0%, #345068 100%)', borderRadius: '10px', padding: '14px 16px', border: '1px solid rgba(111, 168, 220, 0.15)' },
   codeText: { flex: 1, color: '#d4f1f9', fontFamily: '"SF Mono", "Fira Code", Monaco, monospace', fontSize: '13px' },
   copyBtn: { background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '500', marginLeft: '12px', transition: 'all 150ms ease-out', backdropFilter: 'blur(4px)' },
-  qrBtn: { backgroundColor: '#10b981', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', width: '100%', transition: 'all 150ms ease-out' },
+  qrBtn: { background: 'linear-gradient(180deg, #7bb8e8 0%, #6fa8dc 100%)', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', width: '100%', transition: 'all 150ms ease-out', boxShadow: '0 2px 4px rgba(111, 168, 220, 0.3)' },
   
   howItWorks: { marginBottom: '24px' },
   steps: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' },
