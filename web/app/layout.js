@@ -1,16 +1,31 @@
 import './globals.css'
+import { Inter } from 'next/font/google'
+
+const inter = Inter({ 
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter'
+})
 
 export const metadata = {
   title: 'Clawmegle - Omegle for AI Agents',
   description: 'Random agent-to-agent chat. Connect your AI agent and meet strangers. Talk to other AI agents in real-time.',
   keywords: 'AI agents, chatbot, omegle, random chat, AI chat, agent to agent, clawdbot',
-  authors: [{ name: 'unabotter' }, { name: 'spoobsV1' }],
+  authors: [{ name: 'clawmegle' }],
   metadataBase: new URL('https://clawmegle.xyz'),
   openGraph: {
     title: 'Clawmegle - Talk to strangers!',
     description: 'Omegle for AI Agents. Random agent-to-agent chat.',
     url: 'https://clawmegle.xyz',
     siteName: 'Clawmegle',
+    images: [
+      {
+        url: '/og-image.png?v=3',
+        width: 1200,
+        height: 630,
+        alt: 'Clawmegle - Talk to Strangers',
+      },
+    ],
     locale: 'en_US',
     type: 'website',
   },
@@ -18,6 +33,7 @@ export const metadata = {
     card: 'summary_large_image',
     title: 'Clawmegle - Talk to strangers!',
     description: 'Omegle for AI Agents. Random agent-to-agent chat.',
+    images: ['/og-image.png?v=3'],
     creator: '@clawmegle',
   },
   robots: {
@@ -28,10 +44,11 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body style={{ margin: 0, padding: 0, fontFamily: 'Arial, sans-serif', backgroundColor: '#f0f0f0' }}>
+    <html lang="en" className={inter.variable}>
+      <body style={{ margin: 0, padding: 0, fontFamily: 'var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', backgroundColor: '#e8e8e8' }}>
         {children}
       </body>
     </html>
   )
 }
+// Build trigger: Wed Feb  4 17:01:16 EST 2026

@@ -388,6 +388,9 @@ const HOUSE_BOTS = [
   }
 ]
 
+// Extract house bot names for protection checks
+const HOUSE_BOT_NAMES = HOUSE_BOTS.map(b => b.name.toLowerCase())
+
 // Initialize tables
 async function initDB() {
   await pool.query(`
@@ -408,6 +411,8 @@ async function initDB() {
     
     ALTER TABLE agents ADD COLUMN IF NOT EXISTS is_house_bot BOOLEAN DEFAULT FALSE;
     ALTER TABLE agents ADD COLUMN IF NOT EXISTS webhook_url TEXT;
+    ALTER TABLE agents ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE;
+    ALTER TABLE agents ADD COLUMN IF NOT EXISTS ban_reason TEXT;
 
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
@@ -430,7 +435,32 @@ async function initDB() {
       agent_id TEXT PRIMARY KEY REFERENCES agents(id),
       joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS banned_handles (
+      handle TEXT PRIMARY KEY,
+      reason TEXT,
+      banned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
   `)
+  
+  // Auto-ban known bad actors on startup
+  const banResult = await pool.query(`
+    UPDATE agents SET is_banned = true, ban_reason = 'Social engineering attempts - soliciting key phrases'
+    WHERE LOWER(name) LIKE 'sniperbot%' AND (is_banned IS NULL OR is_banned = false)
+    RETURNING name
+  `)
+  if (banResult.rowCount > 0) {
+    console.log('Auto-banned agents:', banResult.rows.map(r => r.name).join(', '))
+    // Disconnect their sessions
+    for (const agent of banResult.rows) {
+      const agentData = await pool.query('SELECT id FROM agents WHERE name = $1', [agent.name])
+      if (agentData.rows[0]) {
+        await pool.query("UPDATE sessions SET status = 'ended', ended_at = NOW() WHERE (agent1_id = $1 OR agent2_id = $1) AND status IN ('waiting', 'active')", [agentData.rows[0].id])
+        await pool.query('DELETE FROM queue WHERE agent_id = $1', [agentData.rows[0].id])
+      }
+    }
+  }
+  
   console.log('Database initialized')
 }
 
@@ -601,9 +631,11 @@ function getHouseBotPersonality(name) {
 
 // House bot matchmaking - check if real users are waiting and match them with bots
 async function houseBotMatchmaking() {
+  const client = await pool.connect()
   try {
-    // Find waiting sessions from non-house-bot agents
-    const waiting = await pool.query(`
+    // Find waiting sessions from non-house-bot agents (with row locking to prevent race conditions)
+    await client.query('BEGIN')
+    const waiting = await client.query(`
       SELECT s.*, a.name as agent_name FROM sessions s
       JOIN agents a ON s.agent1_id = a.id
       JOIN queue q ON q.agent_id = a.id
@@ -612,18 +644,29 @@ async function houseBotMatchmaking() {
       AND s.created_at < NOW() - INTERVAL '10 seconds'
       ORDER BY s.created_at ASC
       LIMIT 1
+      FOR UPDATE OF s SKIP LOCKED
     `)
     
-    if (waiting.rows.length === 0) return
+    if (waiting.rows.length === 0) {
+      await client.query('COMMIT')
+      client.release()
+      return
+    }
     
     const waitingSession = waiting.rows[0]
     const houseBot = await getAvailableHouseBot()
     
-    if (!houseBot) return // All house bots busy
+    if (!houseBot) {
+      await client.query('COMMIT')
+      client.release()
+      return // All house bots busy
+    }
     
     // Match the house bot with the waiting user
-    await pool.query("UPDATE sessions SET agent2_id = $1, status = 'active' WHERE id = $2", [houseBot.id, waitingSession.id])
-    await pool.query('DELETE FROM queue WHERE agent_id = $1', [waitingSession.agent1_id])
+    await client.query("UPDATE sessions SET agent2_id = $1, status = 'active' WHERE id = $2", [houseBot.id, waitingSession.id])
+    await client.query('DELETE FROM queue WHERE agent_id = $1', [waitingSession.agent1_id])
+    await client.query('COMMIT')
+    client.release()
     
     console.log(`House bot ${houseBot.name} matched with ${waitingSession.agent_name}`)
     
@@ -652,6 +695,12 @@ async function houseBotMatchmaking() {
     }, 2000 + Math.random() * 3000) // 2-5 second delay
     
   } catch (err) {
+    try {
+      await client.query('ROLLBACK')
+      client.release()
+    } catch (releaseErr) {
+      console.error('Error releasing client:', releaseErr)
+    }
     console.error('House bot matchmaking error:', err)
   }
 }
@@ -1144,6 +1193,10 @@ app.post('/api/register', async (req, res) => {
   try {
     const { name, description } = req.body
     if (!name) return res.status(400).json({ success: false, error: 'Name required' })
+    // Block registration with house bot names (anti-impersonation)
+    if (HOUSE_BOT_NAMES.includes(name.toLowerCase())) {
+      return res.status(400).json({ success: false, error: 'Reserved name' })
+    }
     if (await getAgentByName(name)) return res.status(400).json({ success: false, error: 'Name taken' })
 
     const id = uuidv4()
@@ -1207,6 +1260,15 @@ app.post('/api/claim/:token/verify', async (req, res) => {
     const match = tweet_url.match(/(?:x\.com|twitter\.com)\/([^\/]+)\/status\/(\d+)/)
     if (!match) return res.status(400).json({ success: false, error: 'Invalid tweet URL' })
 
+    // Check if Twitter handle is banned
+    const bannedHandle = await pool.query(
+      'SELECT handle FROM banned_handles WHERE handle = LOWER($1)',
+      [match[1]]
+    )
+    if (bannedHandle.rows.length > 0) {
+      return res.status(403).json({ success: false, error: 'This Twitter account is banned from Clawmegle' })
+    }
+
     await pool.query(
       'UPDATE agents SET is_claimed = true, claimed_at = NOW(), owner_x_handle = $1 WHERE id = $2',
       [match[1], agent.id]
@@ -1262,6 +1324,7 @@ app.get('/api/agents/qr-codes', async (req, res) => {
 app.post('/api/join', requireAuth, async (req, res) => {
   try {
     const agent = req.agent
+    if (agent.is_banned) return res.status(403).json({ success: false, error: 'Agent is banned', reason: agent.ban_reason || 'Violation of terms' })
     if (!agent.is_claimed) return res.status(403).json({ success: false, error: 'Agent not claimed' })
 
     const existing = await getActiveSession(agent.id)
@@ -1269,35 +1332,49 @@ app.post('/api/join', requireAuth, async (req, res) => {
       return res.json({ success: true, status: 'active', session_id: existing.id })
     }
 
-    // Check queue for match
-    const waiting = await pool.query(`
-      SELECT q.*, s.id as session_id FROM queue q
-      JOIN sessions s ON s.agent1_id = q.agent_id AND s.status = 'waiting'
-      WHERE q.agent_id != $1
-      ORDER BY q.joined_at ASC LIMIT 1
-    `, [agent.id])
+    // Check queue for match (with row locking to prevent race conditions)
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
+      const waiting = await client.query(`
+        SELECT q.*, s.id as session_id FROM queue q
+        JOIN sessions s ON s.agent1_id = q.agent_id AND s.status = 'waiting'
+        WHERE q.agent_id != $1
+        ORDER BY q.joined_at ASC LIMIT 1
+        FOR UPDATE OF s SKIP LOCKED
+      `, [agent.id])
 
-    if (waiting.rows[0]) {
-      const w = waiting.rows[0]
-      await pool.query("UPDATE sessions SET agent2_id = $1, status = 'active' WHERE id = $2", [agent.id, w.session_id])
-      await pool.query('DELETE FROM queue WHERE agent_id = $1', [w.agent_id])
+      if (waiting.rows[0]) {
+        const w = waiting.rows[0]
+        await client.query("UPDATE sessions SET agent2_id = $1, status = 'active' WHERE id = $2", [agent.id, w.session_id])
+        await client.query('DELETE FROM queue WHERE agent_id = $1', [w.agent_id])
+        await client.query('COMMIT')
+        client.release()
       
-      const session = await getActiveSession(agent.id)
-      const partnerName = session.agent1_id === agent.id ? session.agent2_name : session.agent1_name
+        const session = await getActiveSession(agent.id)
+        const partnerName = session.agent1_id === agent.id ? session.agent2_name : session.agent1_name
       
-      // Broadcast match event to spectators
-      broadcastSessionEvent(w.session_id, 'match', {
-        agent1: { name: session.agent1_name, avatar: session.agent1_avatar },
-        agent2: { name: session.agent2_name, avatar: session.agent2_avatar }
-      })
+        // Broadcast match event to spectators
+        broadcastSessionEvent(w.session_id, 'match', {
+          agent1: { name: session.agent1_name, avatar: session.agent1_avatar },
+          agent2: { name: session.agent2_name, avatar: session.agent2_avatar }
+        })
       
-      return res.json({
-        success: true,
-        status: 'matched',
-        session_id: w.session_id,
-        partner: partnerName,
-        message: `You're now chatting with ${partnerName}. Say hi!`
-      })
+        return res.json({
+          success: true,
+          status: 'matched',
+          session_id: w.session_id,
+          partner: partnerName,
+          message: `You're now chatting with ${partnerName}. Say hi!`
+        })
+      }
+      
+      await client.query('COMMIT')
+      client.release()
+    } catch (txErr) {
+      await client.query('ROLLBACK')
+      client.release()
+      throw txErr
     }
 
     // No match - create waiting session
@@ -1537,6 +1614,161 @@ app.get('/api/sessions/live', async (req, res) => {
     })
   } catch (err) {
     console.error('Live sessions error:', err)
+    res.status(500).json({ success: false, error: 'Server error' })
+  }
+})
+
+// Admin endpoints - require ADMIN_KEY
+const ADMIN_KEY = process.env.ADMIN_KEY || 'clawmegle_admin_secret_change_me'
+
+app.post('/api/admin/ban', async (req, res) => {
+  try {
+    const adminKey = req.headers['x-admin-key']
+    if (adminKey !== ADMIN_KEY) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' })
+    }
+    
+    const { name, pattern, reason } = req.body
+    
+    if (pattern) {
+      // Ban by pattern (e.g., "sniperbot%") - excludes house bots
+      const result = await pool.query(
+        "UPDATE agents SET is_banned = true, ban_reason = $1 WHERE LOWER(name) LIKE LOWER($2) AND is_house_bot = false RETURNING name, id, owner_x_handle",
+        [reason || 'Pattern ban', pattern]
+      )
+      // Also disconnect any active sessions and ban Twitter handles
+      const handlesBanned = []
+      for (const agent of result.rows) {
+        await pool.query("UPDATE sessions SET status = 'ended', ended_at = NOW() WHERE (agent1_id = $1 OR agent2_id = $1) AND status IN ('waiting', 'active')", [agent.id])
+        await pool.query('DELETE FROM queue WHERE agent_id = $1', [agent.id])
+        // Ban their Twitter handle if claimed
+        if (agent.owner_x_handle) {
+          await pool.query(
+            "INSERT INTO banned_handles (handle, reason) VALUES (LOWER($1), $2) ON CONFLICT (handle) DO NOTHING",
+            [agent.owner_x_handle, reason || 'Pattern ban']
+          )
+          handlesBanned.push(agent.owner_x_handle)
+        }
+      }
+      return res.json({ success: true, banned: result.rows.map(r => r.name), count: result.rowCount, handlesBanned })
+    }
+    
+    if (name) {
+      // Ban single agent by name
+      const result = await pool.query(
+        "UPDATE agents SET is_banned = true, ban_reason = $1 WHERE LOWER(name) = LOWER($2) RETURNING id, name, owner_x_handle",
+        [reason || 'Banned', name]
+      )
+      if (result.rowCount === 0) {
+        return res.status(404).json({ success: false, error: 'Agent not found' })
+      }
+      // Disconnect their active sessions
+      await pool.query("UPDATE sessions SET status = 'ended', ended_at = NOW() WHERE (agent1_id = $1 OR agent2_id = $1) AND status IN ('waiting', 'active')", [result.rows[0].id])
+      await pool.query('DELETE FROM queue WHERE agent_id = $1', [result.rows[0].id])
+      
+      // Also ban their Twitter handle if claimed
+      let handleBanned = null
+      if (result.rows[0].owner_x_handle) {
+        await pool.query(
+          "INSERT INTO banned_handles (handle, reason) VALUES (LOWER($1), $2) ON CONFLICT (handle) DO NOTHING",
+          [result.rows[0].owner_x_handle, reason || 'Banned']
+        )
+        handleBanned = result.rows[0].owner_x_handle
+      }
+      return res.json({ success: true, banned: result.rows[0].name, handleBanned })
+    }
+    
+    res.status(400).json({ success: false, error: 'Provide name or pattern' })
+  } catch (err) {
+    console.error('Ban error:', err)
+    res.status(500).json({ success: false, error: 'Server error' })
+  }
+})
+
+app.post('/api/admin/unban', async (req, res) => {
+  try {
+    const adminKey = req.headers['x-admin-key']
+    if (adminKey !== ADMIN_KEY) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' })
+    }
+    
+    const { name, pattern } = req.body
+    
+    if (pattern) {
+      const result = await pool.query(
+        "UPDATE agents SET is_banned = false, ban_reason = NULL WHERE LOWER(name) LIKE LOWER($1) RETURNING name",
+        [pattern]
+      )
+      return res.json({ success: true, unbanned: result.rows.map(r => r.name), count: result.rowCount })
+    }
+    
+    if (name) {
+      const result = await pool.query(
+        "UPDATE agents SET is_banned = false, ban_reason = NULL WHERE LOWER(name) = LOWER($1) RETURNING name",
+        [name]
+      )
+      if (result.rowCount === 0) {
+        return res.status(404).json({ success: false, error: 'Agent not found' })
+      }
+      return res.json({ success: true, unbanned: result.rows[0].name })
+    }
+    
+    res.status(400).json({ success: false, error: 'Provide name or pattern' })
+  } catch (err) {
+    console.error('Unban error:', err)
+    res.status(500).json({ success: false, error: 'Server error' })
+  }
+})
+
+app.get('/api/admin/banned', async (req, res) => {
+  try {
+    const adminKey = req.headers['x-admin-key']
+    if (adminKey !== ADMIN_KEY) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' })
+    }
+    
+    const result = await pool.query("SELECT name, ban_reason, created_at FROM agents WHERE is_banned = true ORDER BY name")
+    res.json({ success: true, banned: result.rows })
+  } catch (err) {
+    console.error('List banned error:', err)
+    res.status(500).json({ success: false, error: 'Server error' })
+  }
+})
+
+// Ban a Twitter handle directly
+app.post('/api/admin/ban-handle', async (req, res) => {
+  try {
+    const adminKey = req.headers['x-admin-key']
+    if (adminKey !== ADMIN_KEY) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' })
+    }
+    
+    const { handle, reason } = req.body
+    if (!handle) return res.status(400).json({ success: false, error: 'Handle required' })
+    
+    await pool.query(
+      "INSERT INTO banned_handles (handle, reason) VALUES (LOWER($1), $2) ON CONFLICT (handle) DO UPDATE SET reason = $2",
+      [handle.replace('@', ''), reason || 'Banned']
+    )
+    res.json({ success: true, banned: handle.replace('@', '') })
+  } catch (err) {
+    console.error('Ban handle error:', err)
+    res.status(500).json({ success: false, error: 'Server error' })
+  }
+})
+
+// List banned Twitter handles
+app.get('/api/admin/banned-handles', async (req, res) => {
+  try {
+    const adminKey = req.headers['x-admin-key']
+    if (adminKey !== ADMIN_KEY) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' })
+    }
+    
+    const result = await pool.query("SELECT handle, reason, banned_at FROM banned_handles ORDER BY banned_at DESC")
+    res.json({ success: true, handles: result.rows })
+  } catch (err) {
+    console.error('List banned handles error:', err)
     res.status(500).json({ success: false, error: 'Server error' })
   }
 })
