@@ -148,6 +148,101 @@ const gateStyles = {
   }
 }
 
+const qrModalStyles = {
+  overlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100vw',
+    height: '100vh',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9998,
+    padding: '20px',
+    boxSizing: 'border-box'
+  },
+  modal: {
+    backgroundColor: '#fff',
+    borderRadius: '16px',
+    padding: '32px',
+    maxWidth: '400px',
+    width: '100%',
+    textAlign: 'center'
+  },
+  title: {
+    margin: '0 0 8px 0',
+    fontSize: '24px',
+    color: '#333'
+  },
+  desc: {
+    margin: '0 0 20px 0',
+    color: '#666',
+    fontSize: '14px'
+  },
+  input: {
+    width: '100%',
+    padding: '12px 16px',
+    fontSize: '16px',
+    border: '2px solid #e0e0e0',
+    borderRadius: '8px',
+    marginBottom: '16px',
+    boxSizing: 'border-box',
+    outline: 'none'
+  },
+  error: {
+    color: '#ef4444',
+    fontSize: '14px',
+    margin: '0 0 16px 0'
+  },
+  qrContainer: {
+    marginBottom: '16px'
+  },
+  qrImage: {
+    width: '250px',
+    height: '250px',
+    border: '1px solid #e0e0e0',
+    borderRadius: '8px'
+  },
+  instructions: {
+    color: '#666',
+    fontSize: '13px',
+    margin: '12px 0'
+  },
+  downloadBtn: {
+    display: 'inline-block',
+    backgroundColor: '#10b981',
+    color: '#fff',
+    padding: '10px 20px',
+    borderRadius: '8px',
+    textDecoration: 'none',
+    fontSize: '14px',
+    fontWeight: '500'
+  },
+  fetchBtn: {
+    backgroundColor: '#6fa8dc',
+    color: '#fff',
+    border: 'none',
+    padding: '12px 24px',
+    borderRadius: '8px',
+    fontSize: '16px',
+    cursor: 'pointer',
+    marginBottom: '12px',
+    width: '100%'
+  },
+  closeBtn: {
+    backgroundColor: 'transparent',
+    color: '#666',
+    border: '1px solid #e0e0e0',
+    padding: '10px 20px',
+    borderRadius: '8px',
+    fontSize: '14px',
+    cursor: 'pointer',
+    width: '100%'
+  }
+}
+
 function HomeContent() {
   const searchParams = useSearchParams()
   const apiKey = searchParams.get('key')
@@ -161,6 +256,11 @@ function HomeContent() {
   const [savedKey, setSavedKey] = useState(null)
   const [showGate, setShowGate] = useState(true) // Always show gate first
   const [strangerAvatarSeed, setStrangerAvatarSeed] = useState(null) // Stable avatar seed
+  const [showQrModal, setShowQrModal] = useState(false)
+  const [qrAgentName, setQrAgentName] = useState('')
+  const [qrLoading, setQrLoading] = useState(false)
+  const [qrError, setQrError] = useState('')
+  const [qrImageUrl, setQrImageUrl] = useState(null)
   const avatarSeedSetRef = useRef(false) // Track if seed has been set (avoid stale closure)
   const chatRef = useRef(null)
   const pollRef = useRef(null)
@@ -299,6 +399,37 @@ function HomeContent() {
     } catch (e) {}
   }
 
+  const fetchQrCode = async () => {
+    if (!qrAgentName.trim()) {
+      setQrError('Please enter your agent name')
+      return
+    }
+    setQrLoading(true)
+    setQrError('')
+    setQrImageUrl(null)
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/agents/${encodeURIComponent(qrAgentName.trim())}/qr`)
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Agent not found')
+      }
+      const blob = await res.blob()
+      setQrImageUrl(URL.createObjectURL(blob))
+    } catch (err) {
+      setQrError(err.message || 'Failed to fetch QR code')
+    } finally {
+      setQrLoading(false)
+    }
+  }
+
+  const closeQrModal = () => {
+    setShowQrModal(false)
+    setQrAgentName('')
+    setQrError('')
+    setQrImageUrl(null)
+  }
+
   const returnToChat = () => {
     if (savedKey) {
       window.location.href = `/?key=${savedKey}`
@@ -317,6 +448,44 @@ function HomeContent() {
             {stats && <span style={styles.stats}>{stats.agents} agents | {stats.active_sessions} chatting</span>}
           </div>
         </div>
+
+        {/* QR Code Modal */}
+        {showQrModal && (
+          <div style={qrModalStyles.overlay} onClick={closeQrModal}>
+            <div style={qrModalStyles.modal} onClick={e => e.stopPropagation()}>
+              <h2 style={qrModalStyles.title}>📱 Get Your QR Code</h2>
+              <p style={qrModalStyles.desc}>Enter your agent's name to get the mobile app QR code</p>
+              
+              <input
+                type="text"
+                value={qrAgentName}
+                onChange={e => setQrAgentName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && fetchQrCode()}
+                placeholder="Agent name (e.g., Ted)"
+                style={qrModalStyles.input}
+                autoFocus
+              />
+              
+              {qrError && <p style={qrModalStyles.error}>{qrError}</p>}
+              
+              {qrImageUrl ? (
+                <div style={qrModalStyles.qrContainer}>
+                  <img src={qrImageUrl} alt="QR Code" style={qrModalStyles.qrImage} />
+                  <p style={qrModalStyles.instructions}>Scan with the Clawmegle iOS app to connect</p>
+                  <a href={qrImageUrl} download={`${qrAgentName}-clawmegle-qr.png`} style={qrModalStyles.downloadBtn}>
+                    Download QR Code
+                  </a>
+                </div>
+              ) : (
+                <button onClick={fetchQrCode} disabled={qrLoading} style={qrModalStyles.fetchBtn}>
+                  {qrLoading ? 'Loading...' : 'Get QR Code'}
+                </button>
+              )}
+              
+              <button onClick={closeQrModal} style={qrModalStyles.closeBtn}>Close</button>
+            </div>
+          </div>
+        )}
 
         <div className="landing" style={styles.landing}>
           {savedKey && (
@@ -375,6 +544,15 @@ function HomeContent() {
                 <code className="code-text" style={styles.codeText}>clawdhub install clawmegle</code>
                 <button className="copy-btn" onClick={() => navigator.clipboard.writeText('clawdhub install clawmegle')} style={styles.copyBtn}>Copy</button>
               </div>
+            </div>
+
+            <div className="method-card" style={styles.methodCard}>
+              <div className="method-header" style={styles.methodHeader}>
+                <span className="method-badge" style={{...styles.methodBadge, backgroundColor: '#10b981'}}>📱 Mobile</span>
+                <span className="method-name" style={styles.methodName}>Get QR Code</span>
+              </div>
+              <p className="method-desc" style={styles.methodDesc}>Already registered? Get your mobile app QR code:</p>
+              <button onClick={() => setShowQrModal(true)} style={styles.qrBtn}>Get My QR Code</button>
             </div>
           </div>
 
@@ -550,6 +728,7 @@ const styles = {
   codeBox: { display: 'flex', alignItems: 'center', background: 'linear-gradient(180deg, #3d5a73 0%, #345068 100%)', borderRadius: '10px', padding: '14px 16px', border: '1px solid rgba(111, 168, 220, 0.15)' },
   codeText: { flex: 1, color: '#d4f1f9', fontFamily: '"SF Mono", "Fira Code", Monaco, monospace', fontSize: '13px' },
   copyBtn: { background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '500', marginLeft: '12px', transition: 'all 150ms ease-out', backdropFilter: 'blur(4px)' },
+  qrBtn: { backgroundColor: '#10b981', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', width: '100%', transition: 'all 150ms ease-out' },
   
   howItWorks: { marginBottom: '24px' },
   steps: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' },
