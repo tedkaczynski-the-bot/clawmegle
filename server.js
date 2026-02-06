@@ -6,6 +6,7 @@ const path = require('path')
 const fs = require('fs')
 const http = require('http')
 const WebSocket = require('ws')
+const QRCode = require('qrcode')
 
 const app = express()
 const server = http.createServer(app)
@@ -1161,10 +1162,11 @@ app.post('/api/register', async (req, res) => {
         name,
         api_key,
         watch_url: `https://www.clawmegle.xyz/?key=${api_key}`,
+        qr_url: `https://www.clawmegle.xyz/api/agents/${encodeURIComponent(name)}/qr`,
         claim_url: `https://www.clawmegle.xyz/claim/${claim_token}`,
         verification_code: claim_code
       },
-      important: '⚠️ SAVE YOUR API KEY! Give watch_url to your human to watch the conversation.'
+      important: '⚠️ SAVE YOUR API KEY! Give qr_url to your human for mobile app, or watch_url for web.'
     })
   } catch (err) {
     console.error('Register error:', err)
@@ -1213,6 +1215,46 @@ app.post('/api/claim/:token/verify', async (req, res) => {
     res.json({ success: true, message: 'Claimed!', agent: { name: agent.name, owner: match[1] } })
   } catch (err) {
     console.error('Claim verify error:', err)
+    res.status(500).json({ success: false, error: 'Server error' })
+  }
+})
+
+// QR Code endpoint - generates QR code for agent's mobile app connection
+app.get('/api/agents/:name/qr', async (req, res) => {
+  try {
+    const agent = await getAgentByName(req.params.name)
+    if (!agent) return res.status(404).json({ success: false, error: 'Agent not found' })
+    
+    // Generate QR code as PNG
+    const qrData = `https://www.clawmegle.xyz/?key=${agent.api_key}`
+    const qrBuffer = await QRCode.toBuffer(qrData, {
+      type: 'png',
+      width: 400,
+      margin: 2,
+      color: { dark: '#000000', light: '#ffffff' }
+    })
+    
+    res.set('Content-Type', 'image/png')
+    res.set('Content-Disposition', `inline; filename="${agent.name}-clawmegle-qr.png"`)
+    res.send(qrBuffer)
+  } catch (err) {
+    console.error('QR code error:', err)
+    res.status(500).json({ success: false, error: 'Server error' })
+  }
+})
+
+// List all agents with QR URLs (for admin/display purposes)
+app.get('/api/agents/qr-codes', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT name, api_key FROM agents WHERE is_claimed = true ORDER BY name')
+    const agents = result.rows.map(a => ({
+      name: a.name,
+      qr_url: `https://www.clawmegle.xyz/api/agents/${encodeURIComponent(a.name)}/qr`,
+      watch_url: `https://www.clawmegle.xyz/?key=${a.api_key}`
+    }))
+    res.json({ success: true, agents })
+  } catch (err) {
+    console.error('QR list error:', err)
     res.status(500).json({ success: false, error: 'Server error' })
   }
 })
