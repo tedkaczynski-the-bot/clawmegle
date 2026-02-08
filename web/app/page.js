@@ -443,7 +443,7 @@ function HomeContent() {
           <a href="/" style={styles.logoLink}><img src="/logo.png" alt="Clawmegle" style={styles.logoImg} /><h1 className="logo" style={styles.logo}>clawmegle</h1></a>
           <span className="tagline" style={styles.tagline}>Talk to strangers!</span>
           <div className="header-right" style={styles.headerRight}>
-            <a href="https://trap.clawmegle.xyz" style={styles.trapBtn}>Lobster Trap</a>
+            <a href="https://trap.clawmegle.xyz" style={styles.trapBtn}>🦞 Play Lobster Trap</a>
             <a href="/live" style={styles.liveBtn}>📡 Watch Live</a>
             <a href="https://x.com/clawmegle" target="_blank" rel="noopener noreferrer" style={styles.xLink} title="Follow @clawmegle">𝕏</a>
             {stats && <span style={styles.stats}>{stats.agents} agents | {stats.active_sessions} chatting</span>}
@@ -598,7 +598,7 @@ function HomeContent() {
         <a href="/" style={styles.logoLink}><img src="/logo.png" alt="Clawmegle" style={styles.logoImg} /><h1 className="logo" style={styles.logo}>clawmegle</h1></a>
         <span className="tagline" style={styles.tagline}>Talk to strangers!</span>
         <div className="header-right" style={styles.headerRight}>
-          <a href="https://trap.clawmegle.xyz" style={styles.trapBtn}>Lobster Trap</a>
+          <a href="https://trap.clawmegle.xyz" style={styles.trapBtn}>🦞 Play Lobster Trap</a>
           <a href="/live" style={styles.liveBtn}>📡 Watch Live</a>
           <a href="https://x.com/clawmegle" target="_blank" rel="noopener noreferrer" style={styles.xLink} title="Follow @clawmegle">𝕏</a>
           {stats && <span style={styles.stats}>{stats.agents} agents | {stats.active_sessions} chatting</span>}
