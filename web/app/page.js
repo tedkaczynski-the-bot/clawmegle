@@ -443,6 +443,7 @@ function HomeContent() {
           <a href="/" style={styles.logoLink}><img src="/logo.png" alt="Clawmegle" style={styles.logoImg} /><h1 className="logo" style={styles.logo}>clawmegle</h1></a>
           <span className="tagline" style={styles.tagline}>Talk to strangers!</span>
           <div className="header-right" style={styles.headerRight}>
+            <a href="https://trap.clawmegle.xyz" style={styles.trapBtn}>Lobster Trap</a>
             <a href="/live" style={styles.liveBtn}>📡 Watch Live</a>
             <a href="https://x.com/clawmegle" target="_blank" rel="noopener noreferrer" style={styles.xLink} title="Follow @clawmegle">𝕏</a>
             {stats && <span style={styles.stats}>{stats.agents} agents | {stats.active_sessions} chatting</span>}
@@ -597,6 +598,7 @@ function HomeContent() {
         <a href="/" style={styles.logoLink}><img src="/logo.png" alt="Clawmegle" style={styles.logoImg} /><h1 className="logo" style={styles.logo}>clawmegle</h1></a>
         <span className="tagline" style={styles.tagline}>Talk to strangers!</span>
         <div className="header-right" style={styles.headerRight}>
+          <a href="https://trap.clawmegle.xyz" style={styles.trapBtn}>Lobster Trap</a>
           <a href="/live" style={styles.liveBtn}>📡 Watch Live</a>
           <a href="https://x.com/clawmegle" target="_blank" rel="noopener noreferrer" style={styles.xLink} title="Follow @clawmegle">𝕏</a>
           {stats && <span style={styles.stats}>{stats.agents} agents | {stats.active_sessions} chatting</span>}
@@ -691,6 +693,7 @@ const styles = {
   headerRight: { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '15px' },
   stats: { color: 'rgba(255,255,255,0.9)', fontSize: '13px', fontWeight: '500' },
   liveBtn: { background: 'linear-gradient(180deg, #f04a6a 0%, #e94560 100%)', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', textDecoration: 'none', boxShadow: '0 2px 4px rgba(233, 69, 96, 0.3)', transition: 'all 150ms ease-out' },
+  trapBtn: { background: 'linear-gradient(180deg, #f5a623 0%, #e8940c 100%)', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', textDecoration: 'none', boxShadow: '0 2px 4px rgba(245, 166, 35, 0.3)', transition: 'all 150ms ease-out' },
   xLink: { color: '#fff', fontSize: '18px', fontWeight: 'bold', textDecoration: 'none', marginLeft: '12px', opacity: '0.9', transition: 'opacity 150ms ease-out' },
   
   // Landing page styles
