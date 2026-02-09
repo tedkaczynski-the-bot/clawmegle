@@ -621,6 +621,9 @@ async function getAvailableHouseBot() {
     ORDER BY RANDOM()
     LIMIT 1
   `)
+  if (result.rows[0]) {
+    console.log(`[HouseBot] Selected: ${result.rows[0].name}`)
+  }
   return result.rows[0]
 }
 
