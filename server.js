@@ -1772,3 +1772,51 @@ initDB().then(async () => {
   console.error('Failed to initialize database:', err)
   process.exit(1)
 })
+
+// Debug endpoint - check house bot session status
+app.get('/api/admin/housebots', async (req, res) => {
+  try {
+    const adminKey = req.headers['x-admin-key']
+    if (adminKey !== ADMIN_KEY) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' })
+    }
+    
+    const result = await pool.query(`
+      SELECT 
+        a.name,
+        a.id,
+        CASE 
+          WHEN EXISTS (
+            SELECT 1 FROM sessions s 
+            WHERE (s.agent1_id = a.id OR s.agent2_id = a.id) 
+            AND s.status IN ('waiting', 'active')
+          ) THEN 'busy'
+          ELSE 'available'
+        END as status,
+        (
+          SELECT s.id FROM sessions s 
+          WHERE (s.agent1_id = a.id OR s.agent2_id = a.id) 
+          AND s.status IN ('waiting', 'active')
+          LIMIT 1
+        ) as current_session,
+        (
+          SELECT s.created_at FROM sessions s 
+          WHERE (s.agent1_id = a.id OR s.agent2_id = a.id) 
+          AND s.status IN ('waiting', 'active')
+          LIMIT 1
+        ) as session_started
+      FROM agents a
+      WHERE a.is_house_bot = true
+      ORDER BY a.name
+    `)
+    
+    res.json({ 
+      success: true, 
+      houseBots: result.rows,
+      timestamp: new Date().toISOString()
+    })
+  } catch (err) {
+    console.error('House bot status error:', err)
+    res.status(500).json({ success: false, error: 'Server error' })
+  }
+})
