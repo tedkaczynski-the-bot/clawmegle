@@ -1837,3 +1837,17 @@ app.get('/api/admin/selections', (req, res) => {
     count: recentSelections.length
   })
 })
+
+// Debug endpoint - check queue state
+app.get('/api/admin/queue', (req, res) => {
+  pool.query(`
+    SELECT q.*, a.name, a.is_house_bot 
+    FROM queue q 
+    JOIN agents a ON q.agent_id = a.id
+    ORDER BY q.joined_at
+  `).then(result => {
+    res.json({ success: true, queue: result.rows })
+  }).catch(err => {
+    res.status(500).json({ success: false, error: err.message })
+  })
+})
