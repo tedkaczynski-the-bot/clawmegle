@@ -649,7 +649,7 @@ async function houseBotMatchmaking() {
       JOIN queue q ON q.agent_id = a.id
       WHERE s.status = 'waiting' 
       AND a.is_house_bot = false
-      AND s.created_at < NOW() - INTERVAL '10 seconds'
+      AND s.created_at < NOW() - INTERVAL '3 seconds'
       ORDER BY s.created_at ASC
       LIMIT 1
       FOR UPDATE OF s SKIP LOCKED
