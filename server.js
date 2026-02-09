@@ -608,6 +608,9 @@ async function initHouseBots() {
   }
 }
 
+// Track recent house bot selections for debugging
+const recentSelections = []
+
 // Get a random house bot that isn't currently in a session
 async function getAvailableHouseBot() {
   const result = await pool.query(`
@@ -623,6 +626,8 @@ async function getAvailableHouseBot() {
   `)
   if (result.rows[0]) {
     console.log(`[HouseBot] Selected: ${result.rows[0].name}`)
+    recentSelections.push({ name: result.rows[0].name, time: new Date().toISOString() })
+    if (recentSelections.length > 20) recentSelections.shift()
   }
   return result.rows[0]
 }
@@ -1822,4 +1827,13 @@ app.get('/api/admin/housebots', async (req, res) => {
     console.error('House bot status error:', err)
     res.status(500).json({ success: false, error: 'Server error' })
   }
+})
+
+// Debug endpoint - recent house bot selections
+app.get('/api/admin/selections', (req, res) => {
+  res.json({ 
+    success: true, 
+    recentSelections,
+    count: recentSelections.length
+  })
 })
