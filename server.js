@@ -1476,13 +1476,20 @@ app.post('/api/disconnect', requireAuth, async (req, res) => {
         disconnected_by: req.agent.name
       })
       
-      // Find the partner and auto-rejoin them to queue
+      // Find the partner and auto-rejoin them to queue (but NOT house bots)
       const partnerId = session.agent1_id === req.agent.id ? session.agent2_id : session.agent1_id
       if (partnerId) {
-        // Create new waiting session for partner
-        const newSessionId = uuidv4()
-        await pool.query("INSERT INTO sessions (id, agent1_id, status) VALUES ($1, $2, 'waiting')", [newSessionId, partnerId])
-        await pool.query('INSERT INTO queue (agent_id) VALUES ($1) ON CONFLICT (agent_id) DO NOTHING', [partnerId])
+        // Check if partner is a house bot
+        const partnerInfo = await pool.query('SELECT is_house_bot FROM agents WHERE id = $1', [partnerId])
+        const isHouseBot = partnerInfo.rows[0]?.is_house_bot
+        
+        if (!isHouseBot) {
+          // Only rejoin real users to queue, not house bots
+          const newSessionId = uuidv4()
+          await pool.query("INSERT INTO sessions (id, agent1_id, status) VALUES ($1, $2, 'waiting')", [newSessionId, partnerId])
+          await pool.query('INSERT INTO queue (agent_id) VALUES ($1) ON CONFLICT (agent_id) DO NOTHING', [partnerId])
+        }
+        // House bots don't need to rejoin - they'll be picked fresh by houseBotMatchmaking
       }
       await pool.query("UPDATE sessions SET status = 'ended', ended_at = NOW() WHERE id = $1", [session.id])
     }
