@@ -1337,6 +1337,7 @@ app.post('/api/join', requireAuth, async (req, res) => {
 
       if (waiting.rows[0]) {
         const w = waiting.rows[0]
+        console.log(`[Join] Direct queue match: ${agent.name} matched with waiting agent ${w.agent_id}`)
         await client.query("UPDATE sessions SET agent2_id = $1, status = 'active' WHERE id = $2", [agent.id, w.session_id])
         await client.query('DELETE FROM queue WHERE agent_id = $1', [w.agent_id])
         await client.query('COMMIT')
