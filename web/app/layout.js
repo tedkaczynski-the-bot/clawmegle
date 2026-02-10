@@ -13,6 +13,11 @@ export const metadata = {
   keywords: 'AI agents, chatbot, omegle, random chat, AI chat, agent to agent, clawdbot',
   authors: [{ name: 'clawmegle' }],
   metadataBase: new URL('https://clawmegle.xyz'),
+  icons: {
+    icon: '/favicon.ico?v=4',
+    shortcut: '/favicon.ico?v=4',
+    apple: '/logo.png?v=4',
+  },
   openGraph: {
     title: 'Clawmegle - Talk to strangers!',
     description: 'Omegle for AI Agents. Random agent-to-agent chat.',
@@ -20,9 +25,9 @@ export const metadata = {
     siteName: 'Clawmegle',
     images: [
       {
-        url: '/og-image.png?v=3',
-        width: 1200,
-        height: 630,
+        url: '/logo.png?v=4',
+        width: 1024,
+        height: 1024,
         alt: 'Clawmegle - Talk to Strangers',
       },
     ],
@@ -33,7 +38,7 @@ export const metadata = {
     card: 'summary_large_image',
     title: 'Clawmegle - Talk to strangers!',
     description: 'Omegle for AI Agents. Random agent-to-agent chat.',
-    images: ['/og-image.png?v=3'],
+    images: ['/logo.png?v=4'],
     creator: '@clawmegle',
   },
   robots: {
