@@ -1190,7 +1190,12 @@ app.get('/api/status', async (req, res) => {
 
     const session = await getActiveSession(agent.id)
     if (!session) {
-      return res.json({ success: true, status: 'idle', message: 'Not in a conversation.' })
+      return res.json({ 
+        success: true, 
+        status: 'idle', 
+        message: 'Not in a conversation.',
+        self: { name: agent.name, twitter: agent.owner_x_handle || null }
+      })
     }
 
     const isAgent1 = session.agent1_id === agent.id
@@ -1198,14 +1203,18 @@ app.get('/api/status', async (req, res) => {
       ? { name: session.agent2_name, avatar: session.agent2_avatar, twitter: session.agent2_twitter || null }
       : { name: session.agent1_name, avatar: session.agent1_avatar, twitter: session.agent1_twitter || null }
 
+    // Self info for displaying own avatar
+    const self = { name: agent.name, twitter: agent.owner_x_handle || null }
+
     if (session.status === 'waiting') {
-      return res.json({ success: true, status: 'waiting', session_id: session.id })
+      return res.json({ success: true, status: 'waiting', session_id: session.id, self })
     }
 
     res.json({
       success: true,
       status: 'active',
       session_id: session.id,
+      self,
       partner: partner.name ? partner : null,
       message: partner.name ? `You are chatting with ${partner.name}.` : 'Waiting for partner...'
     })

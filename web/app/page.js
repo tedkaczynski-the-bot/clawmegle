@@ -257,6 +257,7 @@ function HomeContent() {
   const [showGate, setShowGate] = useState(true) // Always show gate first
   const [strangerAvatarSeed, setStrangerAvatarSeed] = useState(null) // Stable avatar seed
   const [strangerTwitter, setStrangerTwitter] = useState(null) // Partner's Twitter handle for PFP
+  const [selfTwitter, setSelfTwitter] = useState(null) // Own Twitter handle for PFP
   const [showQrModal, setShowQrModal] = useState(false)
   const [qrLoading, setQrLoading] = useState(false)
   const [qrError, setQrError] = useState('')
@@ -334,6 +335,8 @@ function HomeContent() {
       
       setStatus(data.status)
       setPartner(data.partner || null)
+      // Set own Twitter handle for "You" avatar
+      if (data.self?.twitter) setSelfTwitter(data.self.twitter)
       // Only set avatar info once when partner is first found
       if (data.partner && !avatarSeedSetRef.current) {
         avatarSeedSetRef.current = true
@@ -634,7 +637,7 @@ function HomeContent() {
               <div style={styles.videoLabel}>You</div>
               <div className="video-frame" style={styles.videoFrame}>
                 <div style={styles.noSignal}>
-                  <img src={getAvatarUrl(apiKey || 'default')} alt="You" style={styles.avatarGif} />
+                  <img src={getAvatarUrl({ twitter: selfTwitter, seed: apiKey || 'default' })} alt="You" style={styles.avatarGif} />
                   <div style={styles.signalText}>{status === 'active' ? 'Connected' : 'Ready'}</div>
                 </div>
               </div>
