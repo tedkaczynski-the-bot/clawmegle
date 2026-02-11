@@ -103,12 +103,9 @@ app.post('/api/debug/x402/test-verify', async (req, res) => {
     
     const paymentPayload = JSON.parse(Buffer.from(paymentHeader, 'base64').toString())
     
-    // Add scheme at top level (CDP expects this even though SDK puts it in accepted)
-    if (!paymentPayload.scheme && paymentPayload.accepted?.scheme) {
-      paymentPayload.scheme = paymentPayload.accepted.scheme
-    }
+    // Get the facilitator client and call verify directly
+    const fc = x402Server.getFacilitatorClient()
     
-    // Pass single requirement, not the wrapper with accepts array
     const paymentRequirements = {
       scheme: 'exact',
       network: X402_NETWORK,
@@ -119,11 +116,10 @@ app.post('/api/debug/x402/test-verify', async (req, res) => {
       extra: { name: 'USDC', version: '2' }
     }
     
-    console.log('[DEBUG] Calling x402Server.verify with:')
-    console.log('[DEBUG] paymentPayload:', JSON.stringify(paymentPayload, null, 2))
-    console.log('[DEBUG] paymentRequirements:', JSON.stringify(paymentRequirements, null, 2))
+    console.log('[DEBUG] Calling facilitator.verify directly')
+    console.log('[DEBUG] paymentPayload keys:', Object.keys(paymentPayload))
     
-    const result = await x402Server.verifyPayment(paymentPayload, paymentRequirements)
+    const result = await fc.verify(paymentPayload, paymentRequirements)
     res.json({ success: true, result })
   } catch (err) {
     console.error('[DEBUG] Verify error:', err.message, err.invalidReason)
