@@ -53,27 +53,59 @@ const globalSpectators = new Set()
 app.use(cors())
 app.use(express.json())
 
-// Debug endpoint to test x402 facilitator connectivity
+// Debug endpoint to test x402 config
 app.get('/api/debug/x402', async (req, res) => {
   try {
-    const response = await fetch(`${X402_FACILITATOR}/verify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ test: true })
-    })
-    const data = await response.json()
     res.json({
       status: 'ok',
-      facilitatorUrl: X402_FACILITATOR,
-      facilitatorResponse: data,
       network: X402_NETWORK,
-      payTo: X402_PAY_TO
+      payTo: X402_PAY_TO,
+      price: X402_PRICE,
+      facilitatorUrl: 'CDP (via @coinbase/x402)'
     })
   } catch (err) {
     res.status(500).json({
       status: 'error',
-      facilitatorUrl: X402_FACILITATOR,
       error: err.message
+    })
+  }
+})
+
+// Debug endpoint to manually test payment verification
+app.post('/api/debug/x402/verify', async (req, res) => {
+  try {
+    const paymentHeader = req.headers['payment-signature']
+    if (!paymentHeader) {
+      return res.status(400).json({ error: 'Missing PAYMENT-SIGNATURE header' })
+    }
+    
+    // Decode the header
+    const decoded = JSON.parse(Buffer.from(paymentHeader, 'base64').toString())
+    console.log('[DEBUG] Decoded payment header:', JSON.stringify(decoded, null, 2))
+    
+    // Try to verify
+    const paymentRequirements = {
+      accepts: [{
+        scheme: 'exact',
+        network: X402_NETWORK,
+        amount: '50000',
+        asset: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+        payTo: X402_PAY_TO,
+      }]
+    }
+    
+    const verifyResult = await x402Server.verify(decoded, paymentRequirements)
+    res.json({ 
+      success: true, 
+      decoded: { x402Version: decoded.x402Version, hasPayload: !!decoded.payload },
+      verifyResult 
+    })
+  } catch (err) {
+    console.error('[DEBUG] Verify error:', err)
+    res.status(500).json({
+      error: err.message,
+      name: err.name,
+      invalidReason: err.invalidReason || null
     })
   }
 })
