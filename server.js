@@ -38,22 +38,30 @@ const globalSpectators = new Set()
 app.use(cors())
 app.use(express.json())
 
-// v1 compatibility: monkey-patch res.json to populate body from header for 402 responses
-// Must run BEFORE x402 middleware so it intercepts the response
+// v1/v2 compatibility: intercept 402 responses to populate body from header
+// x402-fetch expects body, but x402 v2 sends header only
+const onHeaders = require('on-headers')
 app.use('/api/collective/query', (req, res, next) => {
-  const originalJson = res.json.bind(res)
-  res.json = function(body) {
-    // If 402 with empty body, decode header and use as body for v1 clients
-    if (res.statusCode === 402 && (!body || Object.keys(body).length === 0)) {
-      const paymentHeader = res.getHeader('payment-required')
+  onHeaders(res, function() {
+    if (this.statusCode === 402) {
+      const paymentHeader = this.getHeader('payment-required')
       if (paymentHeader) {
         try {
           const decoded = JSON.parse(Buffer.from(paymentHeader, 'base64').toString())
-          return originalJson(decoded)
+          // Store decoded data for later use
+          res._x402Body = decoded
         } catch (e) {
-          // Fall through to original behavior
+          // Ignore parse errors
         }
       }
+    }
+  })
+  
+  // Override res.json to use stored body for 402
+  const originalJson = res.json.bind(res)
+  res.json = function(body) {
+    if (res.statusCode === 402 && res._x402Body && (!body || Object.keys(body).length === 0)) {
+      return originalJson(res._x402Body)
     }
     return originalJson(body)
   }
