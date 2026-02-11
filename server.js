@@ -21,8 +21,8 @@ const __dirname = path.dirname(__filename)
 // x402 payment protocol
 import { paymentMiddleware } from '@x402/express'
 import { x402ResourceServer, HTTPFacilitatorClient } from '@x402/core/server'
-import { registerExactEvmScheme } from '@x402/evm/exact/server'
-import { createFacilitatorConfig } from '@coinbase/x402'
+import { ExactEvmScheme } from '@x402/evm/exact/server'
+import { facilitator } from '@coinbase/x402'
 
 // Gemini for embeddings (Collective feature)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
@@ -32,22 +32,11 @@ const X402_PAY_TO = process.env.X402_PAY_TO || '0x81FD234f63Dd559d0EDA56d17BB1Bb
 const X402_NETWORK = process.env.X402_NETWORK || 'eip155:84532' // Base Sepolia testnet
 const X402_PRICE = process.env.X402_PRICE || '$0.05' // $0.05 per query
 
-// CDP credentials for Coinbase facilitator (fee-free, KYT/OFAC)
-const CDP_API_KEY_ID = process.env.CDP_API_KEY_ID
-const CDP_API_KEY_SECRET = process.env.CDP_API_KEY_SECRET
-
-// Initialize x402 server with CDP facilitator (or fallback to x402.org)
-let facilitatorClient
-if (CDP_API_KEY_ID && CDP_API_KEY_SECRET) {
-  const facilitatorConfig = createFacilitatorConfig(CDP_API_KEY_ID, CDP_API_KEY_SECRET)
-  facilitatorClient = new HTTPFacilitatorClient(facilitatorConfig)
-  console.log('Using CDP facilitator (fee-free)')
-} else {
-  facilitatorClient = new HTTPFacilitatorClient({ url: 'https://x402.org/facilitator' })
-  console.log('Using x402.org facilitator (CDP keys not set)')
-}
+// Initialize x402 server with CDP facilitator (uses CDP_API_KEY_ID and CDP_API_KEY_SECRET env vars)
+const facilitatorClient = new HTTPFacilitatorClient(facilitator)
 const x402Server = new x402ResourceServer(facilitatorClient)
-registerExactEvmScheme(x402Server)
+  .register(X402_NETWORK, new ExactEvmScheme())
+console.log('Using CDP facilitator for x402 payments')
 
 const app = express()
 const server = http.createServer(app)

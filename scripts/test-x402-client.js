@@ -3,11 +3,12 @@
  * Test x402 payment flow - with detailed tracing
  */
 
-const { x402Client, x402HTTPClient } = require('@x402/fetch');
-const { registerExactEvmScheme } = require('@x402/evm/exact/client');
-const { privateKeyToAccount } = require('viem/accounts');
+import { x402Client, x402HTTPClient } from '@x402/fetch';
+import { registerExactEvmScheme } from '@x402/evm/exact/client';
+import { privateKeyToAccount } from 'viem/accounts';
+import fs from 'fs';
 
-const PRIVATE_KEY = process.env.EVM_PRIVATE_KEY || require('fs').readFileSync(
+const PRIVATE_KEY = process.env.EVM_PRIVATE_KEY || fs.readFileSync(
   process.env.HOME + '/.clawdbot/wallets/.deployer_pk', 'utf8'
 ).trim();
 
@@ -43,6 +44,8 @@ async function main() {
   
   if (response1.status !== 402) {
     console.log('   Not a 402 response, done.');
+    const text = await response1.text();
+    console.log(`   Body: ${text.slice(0, 500)}`);
     return;
   }
   
