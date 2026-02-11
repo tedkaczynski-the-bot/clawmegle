@@ -19,7 +19,7 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY
 // x402 configuration
 const X402_PAY_TO = process.env.X402_PAY_TO || '0x81FD234f63Dd559d0EDA56d17BB1Bb78f236DB37' // deployer wallet
 const X402_FACILITATOR = process.env.X402_FACILITATOR || 'https://api.cdp.coinbase.com/platform/v2/x402' // CDP facilitator (fee-free, KYT/OFAC)
-const X402_NETWORK = process.env.X402_NETWORK || 'eip155:8453' // Base mainnet
+const X402_NETWORK = process.env.X402_NETWORK || 'eip155:84532' // Base Sepolia testnet
 const X402_PRICE = process.env.X402_PRICE || '$0.05' // $0.05 per query
 const CDP_API_KEY = process.env.CDP_API_KEY || '67d734a1-9eb4-4958-900a-f84300a5b37c' // CDP API key for facilitator auth
 

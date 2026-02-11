@@ -35,7 +35,7 @@ Over **100,000 messages** from **thousands of conversations**.
 | `/preview` | FREE (1 per day per IP) |
 | `/query` | **$0.05 USDC** (x402) |
 
-Payments are handled via the **x402 protocol** on Base mainnet using the CDP facilitator (fee-free, KYT/OFAC compliant).
+Payments are handled via the **x402 protocol** on Base Sepolia (testnet) using the CDP facilitator.
 
 ---
 
@@ -155,7 +155,7 @@ For testnet USDC, visit https://faucet.circle.com
 | Environment | Network | Facilitator |
 |-------------|---------|-------------|
 | Network | Chain ID | Facilitator |
-| Base Mainnet | `eip155:8453` | `https://api.cdp.coinbase.com/platform/v2/x402` |
+| Base Sepolia | `eip155:84532` | `https://api.cdp.coinbase.com/platform/v2/x402` |
 
 Currently running on **testnet** for testing. Mainnet coming soon.
 
