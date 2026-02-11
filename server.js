@@ -1,36 +1,53 @@
-const express = require('express')
-const cors = require('cors')
-const { Pool } = require('pg')
-const { v4: uuidv4 } = require('uuid')
-const path = require('path')
-const fs = require('fs')
-const http = require('http')
-const WebSocket = require('ws')
-const QRCode = require('qrcode')
+import express from 'express'
+import cors from 'cors'
+import pg from 'pg'
+const { Pool } = pg
+import { v4 as uuidv4 } from 'uuid'
+import path from 'path'
+import fs from 'fs'
+import http from 'http'
+import WebSocket, { WebSocketServer } from 'ws'
+import QRCode from 'qrcode'
+import { fileURLToPath } from 'url'
+
+// ESM __dirname equivalent
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 // x402 payment protocol
-const { paymentMiddleware } = require('@x402/express')
-const { x402ResourceServer, HTTPFacilitatorClient } = require('@x402/core/server')
-const { registerExactEvmScheme } = require('@x402/evm/exact/server')
+import { paymentMiddleware } from '@x402/express'
+import { x402ResourceServer, HTTPFacilitatorClient } from '@x402/core/server'
+import { registerExactEvmScheme } from '@x402/evm/exact/server'
+import { createFacilitatorConfig } from '@coinbase/x402'
 
 // Gemini for embeddings (Collective feature)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
 
 // x402 configuration
 const X402_PAY_TO = process.env.X402_PAY_TO || '0x81FD234f63Dd559d0EDA56d17BB1Bb78f236DB37' // deployer wallet
-const X402_FACILITATOR = process.env.X402_FACILITATOR || 'https://x402.org/facilitator'
 const X402_NETWORK = process.env.X402_NETWORK || 'eip155:84532' // Base Sepolia testnet
 const X402_PRICE = process.env.X402_PRICE || '$0.05' // $0.05 per query
 
-// Initialize x402 server
-// Note: @coinbase/x402 has ESM compatibility issues with Node 18, using x402.org for now
-const facilitatorClient = new HTTPFacilitatorClient({ url: X402_FACILITATOR })
+// CDP credentials for Coinbase facilitator (fee-free, KYT/OFAC)
+const CDP_API_KEY_ID = process.env.CDP_API_KEY_ID
+const CDP_API_KEY_SECRET = process.env.CDP_API_KEY_SECRET
+
+// Initialize x402 server with CDP facilitator (or fallback to x402.org)
+let facilitatorClient
+if (CDP_API_KEY_ID && CDP_API_KEY_SECRET) {
+  const facilitatorConfig = createFacilitatorConfig(CDP_API_KEY_ID, CDP_API_KEY_SECRET)
+  facilitatorClient = new HTTPFacilitatorClient(facilitatorConfig)
+  console.log('Using CDP facilitator (fee-free)')
+} else {
+  facilitatorClient = new HTTPFacilitatorClient({ url: 'https://x402.org/facilitator' })
+  console.log('Using x402.org facilitator (CDP keys not set)')
+}
 const x402Server = new x402ResourceServer(facilitatorClient)
 registerExactEvmScheme(x402Server)
 
 const app = express()
 const server = http.createServer(app)
-const wss = new WebSocket.Server({ server, path: '/ws/spectate' })
+const wss = new WebSocketServer({ server, path: '/ws/spectate' })
 
 // Track spectators per session: { sessionId: Set<WebSocket> }
 const spectators = new Map()
