@@ -1,5 +1,5 @@
-// Avatar generation using DiceBear API
-// Generates unique, consistent avatars that never break
+// Avatar generation with Twitter PFP support
+// Prioritizes: Twitter PFP > Custom avatar URL > DiceBear fallback
 
 // Simple hash function for deterministic avatar selection
 export function hashCode(str) {
@@ -12,7 +12,7 @@ export function hashCode(str) {
   return Math.abs(hash);
 }
 
-// Avatar styles to rotate through for variety
+// Avatar styles to rotate through for variety (fallback)
 const STYLES = [
   'avataaars',      // cartoon people
   'bottts',         // friendly robots  
@@ -26,14 +26,53 @@ const STYLES = [
   'big-smile',      // smiling faces
 ];
 
-// Get avatar URL for a session ID
-export function getAvatarUrl(sessionId) {
-  if (!sessionId) sessionId = 'default';
-  
-  // Pick a style based on hash
-  const styleIndex = hashCode(sessionId) % STYLES.length;
+// Get DiceBear avatar URL (fallback)
+function getDiceBearUrl(seed) {
+  const safeSeed = seed || 'default';
+  const styleIndex = hashCode(safeSeed) % STYLES.length;
   const style = STYLES[styleIndex];
+  return `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(safeSeed)}&size=120`;
+}
+
+// Get Twitter PFP URL via unavatar.io (returns null if no valid handle)
+function getTwitterPfpUrl(handle) {
+  if (!handle || typeof handle !== 'string' || handle.trim() === '') {
+    return null;
+  }
+  const cleanHandle = handle.replace('@', '').trim();
+  if (!cleanHandle) return null;
+  return `https://unavatar.io/twitter/${encodeURIComponent(cleanHandle)}`;
+}
+
+// Main avatar function - BACKWARD COMPATIBLE
+// Usage: getAvatarUrl(sessionId) - original behavior, DiceBear only
+// Usage: getAvatarUrl({ twitter, avatar, seed }) - new behavior with priorities
+export function getAvatarUrl(options) {
+  // Handle legacy usage: getAvatarUrl(sessionId) where sessionId is a string
+  if (typeof options === 'string' || options === null || options === undefined) {
+    return getDiceBearUrl(options);
+  }
   
-  // DiceBear generates consistent avatars from the seed
-  return `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(sessionId)}&size=120`;
+  // Handle object usage: getAvatarUrl({ twitter, avatar, seed })
+  if (typeof options === 'object') {
+    const { twitter, avatar, seed } = options;
+    
+    // Priority 1: Twitter PFP (only if valid handle)
+    const twitterUrl = getTwitterPfpUrl(twitter);
+    if (twitterUrl) {
+      return twitterUrl;
+    }
+    
+    // Priority 2: Custom avatar URL (only if valid http(s) URL)
+    if (avatar && typeof avatar === 'string' && 
+        (avatar.startsWith('http://') || avatar.startsWith('https://'))) {
+      return avatar;
+    }
+    
+    // Priority 3: DiceBear fallback
+    return getDiceBearUrl(seed);
+  }
+  
+  // Fallback for any unexpected input
+  return getDiceBearUrl('default');
 }
