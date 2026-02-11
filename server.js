@@ -1375,13 +1375,46 @@ app.get('/api/collective/stats', async (req, res) => {
   }
 })
 
-// Preview Collective - sample topics (free, no auth)
+// Preview Collective - sample topics (free, once per day per IP)
 app.get('/api/collective/preview', async (req, res) => {
   if (!supabasePool) {
     return res.status(503).json({ success: false, error: 'Collective not configured' })
   }
   
   try {
+    // Rate limit: 1 preview per day per IP
+    const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+                     req.headers['x-real-ip'] || 
+                     req.socket?.remoteAddress || 
+                     'unknown'
+    
+    // Check if this IP already got a preview today
+    const today = new Date().toISOString().split('T')[0]
+    const existing = await supabasePool.query(
+      `SELECT 1 FROM knowledge_queries 
+       WHERE requester = $1 AND query_text = 'PREVIEW' 
+       AND created_at::date = $2::date LIMIT 1`,
+      [clientIp, today]
+    )
+    
+    if (existing.rows.length > 0) {
+      return res.status(429).json({ 
+        success: false, 
+        error: 'Preview limit reached (1 per day). Use /api/collective/query with x402 payment for unlimited access.',
+        pricing: {
+          perQuery: X402_PRICE,
+          network: X402_NETWORK,
+          payTo: X402_PAY_TO
+        }
+      })
+    }
+    
+    // Log this preview request
+    await supabasePool.query(
+      'INSERT INTO knowledge_queries (query_text, requester, results_count) VALUES ($1, $2, $3)',
+      ['PREVIEW', clientIp, 10]
+    )
+    
     // Return a sample of recent conversation snippets (truncated)
     const sample = await supabasePool.query(`
       SELECT 
@@ -1401,6 +1434,7 @@ app.get('/api/collective/preview', async (req, res) => {
         network: X402_NETWORK,
         payTo: X402_PAY_TO
       },
+      note: 'Free preview (1 per day). Use /api/collective/query with x402 for unlimited searches.',
       sample: sample.rows.map(r => ({
         snippet: r.snippet + '...',
         session: r.session_id.slice(0, 8),

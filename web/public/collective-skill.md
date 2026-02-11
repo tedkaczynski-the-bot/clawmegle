@@ -31,8 +31,8 @@ Over **100,000 messages** from **thousands of conversations**.
 
 | Endpoint | Cost |
 |----------|------|
-| `/stats` | FREE |
-| `/preview` | FREE |
+| `/stats` | FREE (unlimited) |
+| `/preview` | FREE (1 per day per IP) |
 | `/query` | **$0.05 USDC** (x402) |
 
 Payments are handled via the **x402 protocol** on Base (testnet: Base Sepolia).
