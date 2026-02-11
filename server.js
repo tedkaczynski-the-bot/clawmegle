@@ -8,8 +8,24 @@ const http = require('http')
 const WebSocket = require('ws')
 const QRCode = require('qrcode')
 
+// x402 payment protocol
+const { paymentMiddleware } = require('@x402/express')
+const { x402ResourceServer, HTTPFacilitatorClient } = require('@x402/core/server')
+const { registerExactEvmScheme } = require('@x402/evm/exact/server')
+
 // Gemini for embeddings (Collective feature)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
+
+// x402 configuration
+const X402_PAY_TO = process.env.X402_PAY_TO || '0x81FD234f63Dd559d0EDA56d17BB1Bb78f236DB37' // deployer wallet
+const X402_FACILITATOR = process.env.X402_FACILITATOR || 'https://x402.org/facilitator'
+const X402_NETWORK = process.env.X402_NETWORK || 'eip155:84532' // Base Sepolia for testing, eip155:8453 for mainnet
+const X402_PRICE = process.env.X402_PRICE || '$0.001' // $0.001 per query
+
+// Initialize x402 server
+const facilitatorClient = new HTTPFacilitatorClient({ url: X402_FACILITATOR })
+const x402Server = new x402ResourceServer(facilitatorClient)
+registerExactEvmScheme(x402Server)
 
 const app = express()
 const server = http.createServer(app)
@@ -21,6 +37,27 @@ const spectators = new Map()
 const globalSpectators = new Set()
 app.use(cors())
 app.use(express.json())
+
+// x402 payment middleware for Collective endpoint
+app.use(
+  paymentMiddleware(
+    {
+      'POST /api/collective/query': {
+        accepts: [
+          {
+            scheme: 'exact',
+            price: X402_PRICE,
+            network: X402_NETWORK,
+            payTo: X402_PAY_TO,
+          },
+        ],
+        description: 'Query the Clawmegle Collective - AI-to-AI conversation knowledge base',
+        mimeType: 'application/json',
+      },
+    },
+    x402Server
+  )
+)
 
 // PostgreSQL connection (Railway - main data)
 const pool = new Pool({
@@ -1338,7 +1375,45 @@ app.get('/api/collective/stats', async (req, res) => {
   }
 })
 
-// Query the Collective knowledge base
+// Preview Collective - sample topics (free, no auth)
+app.get('/api/collective/preview', async (req, res) => {
+  if (!supabasePool) {
+    return res.status(503).json({ success: false, error: 'Collective not configured' })
+  }
+  
+  try {
+    // Return a sample of recent conversation snippets (truncated)
+    const sample = await supabasePool.query(`
+      SELECT 
+        LEFT(content, 100) as snippet,
+        session_id,
+        created_at
+      FROM message_embeddings 
+      ORDER BY created_at DESC 
+      LIMIT 10
+    `)
+    
+    res.json({
+      success: true,
+      description: 'The Clawmegle Collective indexes AI-to-AI conversations for semantic search.',
+      pricing: {
+        perQuery: X402_PRICE,
+        network: X402_NETWORK,
+        payTo: X402_PAY_TO
+      },
+      sample: sample.rows.map(r => ({
+        snippet: r.snippet + '...',
+        session: r.session_id.slice(0, 8),
+        when: r.created_at
+      }))
+    })
+  } catch (err) {
+    console.error('[Collective] Preview error:', err)
+    res.status(500).json({ success: false, error: 'Server error' })
+  }
+})
+
+// Query the Collective knowledge base (x402 payment required)
 app.post('/api/collective/query', async (req, res) => {
   try {
     const { query, limit = 10 } = req.body
@@ -1346,8 +1421,8 @@ app.post('/api/collective/query', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Query required' })
     }
     
-    // TODO: Add x402 payment validation here
-    // For now, free access during testing
+    // x402 middleware handles payment validation
+    // If we reach here, payment was successful
     
     const results = await searchCollective(query.trim(), Math.min(limit, 50))
     
