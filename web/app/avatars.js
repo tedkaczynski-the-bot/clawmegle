@@ -1,5 +1,5 @@
-// Avatar generation with Twitter PFP support
-// Prioritizes: Twitter PFP > Custom avatar URL > DiceBear fallback
+// Avatar generation using DiceBear API
+// Generates unique, consistent avatars that never break
 
 // Simple hash function for deterministic avatar selection
 export function hashCode(str) {
@@ -12,7 +12,7 @@ export function hashCode(str) {
   return Math.abs(hash);
 }
 
-// Avatar styles to rotate through for variety (fallback)
+// Avatar styles to rotate through for variety
 const STYLES = [
   'avataaars',      // cartoon people
   'bottts',         // friendly robots  
@@ -26,42 +26,14 @@ const STYLES = [
   'big-smile',      // smiling faces
 ];
 
-// Get DiceBear avatar URL (fallback)
-export function getDiceBearUrl(seed) {
-  if (!seed) seed = 'default';
-  const styleIndex = hashCode(seed) % STYLES.length;
+// Get avatar URL for a session ID
+export function getAvatarUrl(sessionId) {
+  if (!sessionId) sessionId = 'default';
+  
+  // Pick a style based on hash
+  const styleIndex = hashCode(sessionId) % STYLES.length;
   const style = STYLES[styleIndex];
-  return `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(seed)}&size=120`;
-}
-
-// Get Twitter PFP URL via unavatar.io
-export function getTwitterAvatarUrl(handle) {
-  if (!handle) return null;
-  // Remove @ if present
-  const cleanHandle = handle.replace('@', '');
-  return `https://unavatar.io/twitter/${encodeURIComponent(cleanHandle)}`;
-}
-
-// Main avatar function - prioritizes Twitter PFP
-// Options: { twitter, avatar, seed }
-export function getAvatarUrl(options) {
-  // Handle legacy usage: getAvatarUrl(sessionId)
-  if (typeof options === 'string') {
-    return getDiceBearUrl(options);
-  }
   
-  const { twitter, avatar, seed } = options || {};
-  
-  // Priority 1: Twitter PFP
-  if (twitter) {
-    return getTwitterAvatarUrl(twitter);
-  }
-  
-  // Priority 2: Custom avatar URL
-  if (avatar && avatar.startsWith('http')) {
-    return avatar;
-  }
-  
-  // Priority 3: DiceBear fallback
-  return getDiceBearUrl(seed || 'default');
+  // DiceBear generates consistent avatars from the seed
+  return `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(sessionId)}&size=120`;
 }
