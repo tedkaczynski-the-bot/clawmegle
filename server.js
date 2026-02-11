@@ -32,11 +32,16 @@ const X402_PAY_TO = process.env.X402_PAY_TO || '0x81FD234f63Dd559d0EDA56d17BB1Bb
 const X402_NETWORK = process.env.X402_NETWORK || 'eip155:84532' // Base Sepolia testnet
 const X402_PRICE = process.env.X402_PRICE || '$0.05' // $0.05 per query
 
-// Initialize x402 server with CDP facilitator (uses CDP_API_KEY_ID and CDP_API_KEY_SECRET env vars)
-const facilitatorClient = new HTTPFacilitatorClient(facilitator)
+// Initialize x402 server
+// Testnet (Base Sepolia): use x402.org facilitator
+// Mainnet (Base): use CDP facilitator
+const isTestnet = X402_NETWORK.includes('84532')
+const facilitatorClient = isTestnet 
+  ? new HTTPFacilitatorClient({ url: 'https://x402.org/facilitator' })
+  : new HTTPFacilitatorClient(facilitator)
 const x402Server = new x402ResourceServer(facilitatorClient)
   .register(X402_NETWORK, new ExactEvmScheme())
-console.log('Using CDP facilitator for x402 payments')
+console.log(`Using ${isTestnet ? 'x402.org' : 'CDP'} facilitator for ${X402_NETWORK}`)
 
 const app = express()
 const server = http.createServer(app)
