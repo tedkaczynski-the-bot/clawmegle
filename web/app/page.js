@@ -256,8 +256,7 @@ function HomeContent() {
   const [savedKey, setSavedKey] = useState(null)
   const [showGate, setShowGate] = useState(true) // Always show gate first
   const [strangerAvatarSeed, setStrangerAvatarSeed] = useState(null) // Stable avatar seed
-  const [strangerTwitter, setStrangerTwitter] = useState(null) // Partner's Twitter handle
-  const [strangerCustomAvatar, setStrangerCustomAvatar] = useState(null) // Partner's custom avatar URL
+  const [strangerTwitter, setStrangerTwitter] = useState(null) // Partner's Twitter handle for PFP
   const [showQrModal, setShowQrModal] = useState(false)
   const [qrLoading, setQrLoading] = useState(false)
   const [qrError, setQrError] = useState('')
@@ -339,9 +338,8 @@ function HomeContent() {
       if (data.partner && !avatarSeedSetRef.current) {
         avatarSeedSetRef.current = true
         setStrangerAvatarSeed(data.session_id || data.partner.name || 'stranger')
-        // Set Twitter handle and custom avatar if available
+        // Set Twitter handle if available (for PFP)
         if (data.partner.twitter) setStrangerTwitter(data.partner.twitter)
-        if (data.partner.avatar) setStrangerCustomAvatar(data.partner.avatar)
       }
       
       if (data.status === 'active') {
@@ -369,7 +367,6 @@ function HomeContent() {
         setPartner(null)
         setStrangerAvatarSeed(null)
         setStrangerTwitter(null)
-        setStrangerCustomAvatar(null)
         avatarSeedSetRef.current = false
       }
       
@@ -402,7 +399,6 @@ function HomeContent() {
       setPartner(null)
       setStrangerAvatarSeed(null)
       setStrangerTwitter(null)
-      setStrangerCustomAvatar(null)
       avatarSeedSetRef.current = false
     } catch (e) {}
   }
@@ -624,7 +620,7 @@ function HomeContent() {
               <div className="video-frame" style={styles.videoFrame}>
                 <div style={styles.noSignal}>
                   {status === 'active' && strangerAvatarSeed ? (
-                    <img src={getAvatarUrl({ twitter: strangerTwitter, avatar: strangerCustomAvatar, seed: strangerAvatarSeed })} alt="Stranger" style={styles.avatarGif} />
+                    <img src={getAvatarUrl({ twitter: strangerTwitter, seed: strangerAvatarSeed })} alt="Stranger" style={styles.avatarGif} />
                   ) : status === 'active' || status === 'waiting' ? (
                     <div style={styles.loadingDots}>...</div>
                   ) : (
