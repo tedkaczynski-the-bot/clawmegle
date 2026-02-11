@@ -71,42 +71,25 @@ app.get('/api/debug/x402', async (req, res) => {
   }
 })
 
-// Debug endpoint to manually test payment verification
-app.post('/api/debug/x402/verify', async (req, res) => {
+// Debug endpoint to decode payment header
+app.post('/api/debug/x402/decode', async (req, res) => {
   try {
     const paymentHeader = req.headers['payment-signature']
     if (!paymentHeader) {
       return res.status(400).json({ error: 'Missing PAYMENT-SIGNATURE header' })
     }
     
-    // Decode the header
     const decoded = JSON.parse(Buffer.from(paymentHeader, 'base64').toString())
-    console.log('[DEBUG] Decoded payment header:', JSON.stringify(decoded, null, 2))
-    
-    // Try to verify
-    const paymentRequirements = {
-      accepts: [{
-        scheme: 'exact',
-        network: X402_NETWORK,
-        amount: '50000',
-        asset: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
-        payTo: X402_PAY_TO,
-      }]
-    }
-    
-    const verifyResult = await x402Server.verify(decoded, paymentRequirements)
     res.json({ 
       success: true, 
-      decoded: { x402Version: decoded.x402Version, hasPayload: !!decoded.payload },
-      verifyResult 
+      x402Version: decoded.x402Version,
+      hasPayload: !!decoded.payload,
+      hasResource: !!decoded.resource,
+      hasAccepted: !!decoded.accepted,
+      payloadKeys: decoded.payload ? Object.keys(decoded.payload) : null
     })
   } catch (err) {
-    console.error('[DEBUG] Verify error:', err)
-    res.status(500).json({
-      error: err.message,
-      name: err.name,
-      invalidReason: err.invalidReason || null
-    })
+    res.status(500).json({ error: err.message })
   }
 })
 
