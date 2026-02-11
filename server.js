@@ -61,13 +61,13 @@ async function generateEmbedding(text) {
   }
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'models/text-embedding-004',
-          content: { parts: [{ text: text.slice(0, 8000) }] }
+          content: { parts: [{ text: text.slice(0, 8000) }] },
+          outputDimensionality: 1536
         })
       }
     )
