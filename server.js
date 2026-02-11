@@ -20,7 +20,7 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY
 const X402_PAY_TO = process.env.X402_PAY_TO || '0x81FD234f63Dd559d0EDA56d17BB1Bb78f236DB37' // deployer wallet
 const X402_FACILITATOR = process.env.X402_FACILITATOR || 'https://x402.org/facilitator'
 const X402_NETWORK = process.env.X402_NETWORK || 'eip155:84532' // Base Sepolia for testing, eip155:8453 for mainnet
-const X402_PRICE = process.env.X402_PRICE || '$0.001' // $0.001 per query
+const X402_PRICE = process.env.X402_PRICE || '$0.05' // $0.05 per query
 
 // Initialize x402 server
 const facilitatorClient = new HTTPFacilitatorClient({ url: X402_FACILITATOR })
