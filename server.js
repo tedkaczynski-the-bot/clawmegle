@@ -1,3 +1,7 @@
+// Polyfill globalThis.crypto for Node 18 (needed by @coinbase/cdp-sdk for JWT)
+import { webcrypto } from 'crypto'
+if (!globalThis.crypto) globalThis.crypto = webcrypto
+
 import express from 'express'
 import cors from 'cors'
 import pg from 'pg'
