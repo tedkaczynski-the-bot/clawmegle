@@ -22,7 +22,7 @@ const __dirname = path.dirname(__filename)
 import { paymentMiddleware } from '@x402/express'
 import { x402ResourceServer, HTTPFacilitatorClient } from '@x402/core/server'
 import { ExactEvmScheme } from '@x402/evm/exact/server'
-import { facilitator } from '@coinbase/x402'
+import { getCdpFacilitatorConfig } from './cdp-auth.js'
 
 // Gemini for embeddings (Collective feature)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
@@ -32,9 +32,9 @@ const X402_PAY_TO = process.env.X402_PAY_TO || '0x81FD234f63Dd559d0EDA56d17BB1Bb
 const X402_NETWORK = process.env.X402_NETWORK || 'eip155:84532' // Base Sepolia testnet
 const X402_PRICE = process.env.X402_PRICE || '$0.05' // $0.05 per query
 
-// Initialize x402 server with CDP facilitator
-// Note: CDP works for both testnet and mainnet, and Railway can reach it (unlike x402.org)
-const facilitatorClient = new HTTPFacilitatorClient(facilitator)
+// Initialize x402 server with custom CDP JWT auth (same approach as game-theory agent)
+const cdpConfig = getCdpFacilitatorConfig()
+const facilitatorClient = new HTTPFacilitatorClient(cdpConfig)
 const x402Server = new x402ResourceServer(facilitatorClient)
   .register(X402_NETWORK, new ExactEvmScheme())
 
