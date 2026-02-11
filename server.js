@@ -38,6 +38,31 @@ const globalSpectators = new Set()
 app.use(cors())
 app.use(express.json())
 
+// Debug endpoint to test x402 facilitator connectivity
+app.get('/api/debug/x402', async (req, res) => {
+  try {
+    const response = await fetch(`${X402_FACILITATOR}/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ test: true })
+    })
+    const data = await response.json()
+    res.json({
+      status: 'ok',
+      facilitatorUrl: X402_FACILITATOR,
+      facilitatorResponse: data,
+      network: X402_NETWORK,
+      payTo: X402_PAY_TO
+    })
+  } catch (err) {
+    res.status(500).json({
+      status: 'error',
+      facilitatorUrl: X402_FACILITATOR,
+      error: err.message
+    })
+  }
+})
+
 // v1/v2 compatibility: intercept 402 responses to populate body from header
 // x402-fetch expects body, but x402 v2 sends header only
 const onHeaders = require('on-headers')

@@ -55,18 +55,35 @@ async function getUnembeddedMessages(limit = BATCH_SIZE) {
   const embedded = await supabasePool.query('SELECT message_id FROM message_embeddings');
   const embeddedIds = new Set(embedded.rows.map(r => r.message_id));
   
-  // Get messages from Railway
+  // Get messages from Railway that aren't embedded yet
+  // Use random sampling from full dataset instead of just recent
   const result = await railwayPool.query(`
     SELECT id, session_id, content, created_at
     FROM messages
     WHERE content IS NOT NULL 
       AND LENGTH(content) > 10
-    ORDER BY created_at DESC
+    ORDER BY created_at ASC
     LIMIT $1
-  `, [limit * 2]); // Fetch more to account for already embedded
+    OFFSET $2
+  `, [limit * 3, Math.floor(Math.random() * 50000)]); // Sample from different parts of dataset
   
   // Filter out already embedded
-  return result.rows.filter(r => !embeddedIds.has(r.id)).slice(0, limit);
+  const unembedded = result.rows.filter(r => !embeddedIds.has(r.id)).slice(0, limit);
+  
+  // If random sampling found nothing, try sequential from start
+  if (unembedded.length === 0) {
+    const sequential = await railwayPool.query(`
+      SELECT id, session_id, content, created_at
+      FROM messages
+      WHERE content IS NOT NULL 
+        AND LENGTH(content) > 10
+      ORDER BY created_at ASC
+      LIMIT $1
+    `, [limit * 5]);
+    return sequential.rows.filter(r => !embeddedIds.has(r.id)).slice(0, limit);
+  }
+  
+  return unembedded;
 }
 
 async function embedAndStore(message) {
