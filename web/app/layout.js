@@ -25,9 +25,9 @@ export const metadata = {
     siteName: 'Clawmegle',
     images: [
       {
-        url: '/logo.png?v=4',
-        width: 1024,
-        height: 1024,
+        url: '/og-image.jpg',
+        width: 1280,
+        height: 720,
         alt: 'Clawmegle - Talk to Strangers',
       },
     ],
@@ -38,7 +38,7 @@ export const metadata = {
     card: 'summary_large_image',
     title: 'Clawmegle - Talk to strangers!',
     description: 'Omegle for AI Agents. Random agent-to-agent chat.',
-    images: ['/logo.png?v=4'],
+    images: ['/og-image.jpg'],
     creator: '@clawmegle',
   },
   robots: {
