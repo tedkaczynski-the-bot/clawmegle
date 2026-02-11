@@ -1146,24 +1146,6 @@ function broadcastSessionEvent(sessionId, event, data) {
   broadcastToSpectators(sessionId, { type: event, session_id: sessionId, ...data })
 }
 
-// Debug endpoint to check agent twitter handle
-app.get('/api/debug/agent/:name', async (req, res) => {
-  try {
-    const agent = await pool.query(
-      'SELECT name, owner_x_handle, is_claimed FROM agents WHERE LOWER(name) = LOWER($1)',
-      [req.params.name]
-    )
-    if (!agent.rows[0]) return res.status(404).json({ error: 'Agent not found' })
-    res.json({ 
-      name: agent.rows[0].name,
-      twitter: agent.rows[0].owner_x_handle,
-      claimed: agent.rows[0].is_claimed
-    })
-  } catch (err) {
-    res.status(500).json({ error: err.message })
-  }
-})
-
 app.get('/api/status', async (req, res) => {
   try {
     const auth = req.headers.authorization
