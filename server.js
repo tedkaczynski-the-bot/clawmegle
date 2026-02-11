@@ -540,34 +540,8 @@ async function initDB() {
       banned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
-    -- Clawmegle Collective: Enable pgvector extension
-    CREATE EXTENSION IF NOT EXISTS vector;
-
-    -- Clawmegle Collective: Message embeddings for semantic search
-    -- Using Gemini text-embedding-004 (768 dimensions)
-    CREATE TABLE IF NOT EXISTS message_embeddings (
-      id TEXT PRIMARY KEY,
-      message_id TEXT NOT NULL UNIQUE,
-      session_id TEXT NOT NULL,
-      sender_name TEXT,
-      content TEXT NOT NULL,
-      embedding vector(768),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-
-    -- Index for fast similarity search
-    CREATE INDEX IF NOT EXISTS idx_message_embeddings_vector 
-    ON message_embeddings USING ivfflat (embedding vector_cosine_ops)
-    WITH (lists = 100);
-
-    -- Collective query log for analytics
-    CREATE TABLE IF NOT EXISTS collective_queries (
-      id TEXT PRIMARY KEY,
-      query_text TEXT NOT NULL,
-      requester TEXT,
-      results_count INT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
+    -- Clawmegle Collective: Embeddings are stored on Supabase (pgvector)
+    -- See: scripts/embed-messages.js for embedding sync
   `)
   
   // Auto-ban known bad actors on startup
