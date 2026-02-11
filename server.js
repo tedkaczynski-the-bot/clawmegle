@@ -8,6 +8,9 @@ const http = require('http')
 const WebSocket = require('ws')
 const QRCode = require('qrcode')
 
+// Gemini for embeddings (Collective feature)
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY
+
 const app = express()
 const server = http.createServer(app)
 const wss = new WebSocket.Server({ server, path: '/ws/spectate' })
@@ -19,11 +22,17 @@ const globalSpectators = new Set()
 app.use(cors())
 app.use(express.json())
 
-// PostgreSQL connection
+// PostgreSQL connection (Railway - main data)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 })
+
+// Supabase connection (embeddings for Collective)
+const supabasePool = process.env.SUPABASE_DATABASE_URL ? new Pool({
+  connectionString: process.env.SUPABASE_DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+}) : null
 
 // Webhook notification helper
 async function notifyWebhook(webhookUrl, payload) {
@@ -37,6 +46,95 @@ async function notifyWebhook(webhookUrl, payload) {
     })
   } catch (err) {
     console.error('Webhook notification failed:', err.message)
+  }
+}
+
+// ============================================
+// CLAWMEGLE COLLECTIVE - Knowledge Base
+// ============================================
+
+// Generate embedding for text using Gemini
+async function generateEmbedding(text) {
+  if (!GEMINI_API_KEY) {
+    console.error('[Collective] No Gemini API key configured')
+    return null
+  }
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'models/text-embedding-004',
+          content: { parts: [{ text: text.slice(0, 8000) }] }
+        })
+      }
+    )
+    const data = await response.json()
+    if (data.error) {
+      console.error('[Collective] Gemini error:', data.error.message)
+      return null
+    }
+    return data.embedding?.values || null
+  } catch (err) {
+    console.error('[Collective] Embedding error:', err.message)
+    return null
+  }
+}
+
+// Embed a message and store in Supabase
+async function embedMessage(messageId, sessionId, content, senderName) {
+  if (!supabasePool) {
+    console.error('[Collective] Supabase not configured')
+    return false
+  }
+  
+  const embedding = await generateEmbedding(content)
+  if (!embedding) return false
+  
+  try {
+    const embeddingStr = `[${embedding.join(',')}]`
+    await supabasePool.query(`
+      INSERT INTO message_embeddings (message_id, session_id, content, embedding)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (message_id) DO NOTHING
+    `, [messageId, sessionId, content, embeddingStr])
+    return true
+  } catch (err) {
+    console.error('[Collective] Failed to store embedding:', err.message)
+    return false
+  }
+}
+
+// Search embeddings by semantic similarity (Supabase)
+async function searchCollective(query, limit = 10) {
+  if (!supabasePool) {
+    console.error('[Collective] Supabase not configured')
+    return []
+  }
+  
+  const queryEmbedding = await generateEmbedding(query)
+  if (!queryEmbedding) return []
+  
+  try {
+    const embeddingStr = `[${queryEmbedding.join(',')}]`
+    const result = await supabasePool.query(`
+      SELECT 
+        me.content,
+        me.session_id,
+        me.created_at,
+        1 - (me.embedding <=> $1::vector) as similarity
+      FROM message_embeddings me
+      WHERE me.embedding IS NOT NULL
+      ORDER BY me.embedding <=> $1::vector
+      LIMIT $2
+    `, [embeddingStr, limit])
+    
+    return result.rows
+  } catch (err) {
+    console.error('[Collective] Search error:', err.message)
+    return []
   }
 }
 
@@ -440,6 +538,35 @@ async function initDB() {
       handle TEXT PRIMARY KEY,
       reason TEXT,
       banned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Clawmegle Collective: Enable pgvector extension
+    CREATE EXTENSION IF NOT EXISTS vector;
+
+    -- Clawmegle Collective: Message embeddings for semantic search
+    -- Using Gemini text-embedding-004 (768 dimensions)
+    CREATE TABLE IF NOT EXISTS message_embeddings (
+      id TEXT PRIMARY KEY,
+      message_id TEXT NOT NULL UNIQUE,
+      session_id TEXT NOT NULL,
+      sender_name TEXT,
+      content TEXT NOT NULL,
+      embedding vector(768),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Index for fast similarity search
+    CREATE INDEX IF NOT EXISTS idx_message_embeddings_vector 
+    ON message_embeddings USING ivfflat (embedding vector_cosine_ops)
+    WITH (lists = 100);
+
+    -- Collective query log for analytics
+    CREATE TABLE IF NOT EXISTS collective_queries (
+      id TEXT PRIMARY KEY,
+      query_text TEXT NOT NULL,
+      requester TEXT,
+      results_count INT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `)
   
@@ -1206,6 +1333,115 @@ app.get('/api/status', async (req, res) => {
   }
 })
 
+// ============================================
+// CLAWMEGLE COLLECTIVE API ENDPOINTS
+// ============================================
+
+// Get Collective stats (free, no auth)
+app.get('/api/collective/stats', async (req, res) => {
+  if (!supabasePool) {
+    return res.status(503).json({ success: false, error: 'Collective not configured' })
+  }
+  
+  try {
+    const [messages, sessions, queries] = await Promise.all([
+      supabasePool.query('SELECT COUNT(*) FROM message_embeddings'),
+      supabasePool.query('SELECT COUNT(DISTINCT session_id) FROM message_embeddings'),
+      supabasePool.query('SELECT COUNT(*) FROM knowledge_queries')
+    ])
+    
+    res.json({
+      success: true,
+      stats: {
+        indexed_messages: parseInt(messages.rows[0].count),
+        conversations_indexed: parseInt(sessions.rows[0].count),
+        total_queries: parseInt(queries.rows[0].count)
+      }
+    })
+  } catch (err) {
+    console.error('[Collective] Stats error:', err)
+    res.status(500).json({ success: false, error: 'Server error' })
+  }
+})
+
+// Query the Collective knowledge base
+app.post('/api/collective/query', async (req, res) => {
+  try {
+    const { query, limit = 10 } = req.body
+    if (!query?.trim()) {
+      return res.status(400).json({ success: false, error: 'Query required' })
+    }
+    
+    // TODO: Add x402 payment validation here
+    // For now, free access during testing
+    
+    const results = await searchCollective(query.trim(), Math.min(limit, 50))
+    
+    // Log query for analytics (on Supabase)
+    await supabasePool.query(
+      'INSERT INTO knowledge_queries (query_text, requester, results_count) VALUES ($1, $2, $3)',
+      [query.trim(), req.headers['x-requester'] || 'anonymous', results.length]
+    )
+    
+    res.json({
+      success: true,
+      query: query.trim(),
+      results: results.map(r => ({
+        content: r.content,
+        agent: r.sender_name,
+        session_id: r.session_id,
+        timestamp: r.created_at,
+        relevance: r.similarity ? parseFloat(r.similarity.toFixed(3)) : null
+      })),
+      count: results.length
+    })
+  } catch (err) {
+    console.error('[Collective] Query error:', err)
+    res.status(500).json({ success: false, error: 'Server error' })
+  }
+})
+
+// Backfill existing messages (admin endpoint)
+app.post('/api/collective/backfill', async (req, res) => {
+  // Simple auth check - require a secret
+  const secret = req.headers['x-admin-secret']
+  if (secret !== process.env.ADMIN_SECRET) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' })
+  }
+  
+  try {
+    const limit = Math.min(parseInt(req.body.limit) || 100, 500)
+    
+    // Find messages not yet embedded
+    const unembedded = await pool.query(`
+      SELECT m.id, m.session_id, m.content, a.name as sender_name
+      FROM messages m
+      JOIN agents a ON m.sender_id = a.id
+      WHERE NOT EXISTS (
+        SELECT 1 FROM message_embeddings me WHERE me.message_id = m.id
+      )
+      ORDER BY m.created_at DESC
+      LIMIT $1
+    `, [limit])
+    
+    let embedded = 0
+    for (const msg of unembedded.rows) {
+      const success = await embedMessage(msg.id, msg.session_id, msg.content, msg.sender_name)
+      if (success) embedded++
+    }
+    
+    res.json({
+      success: true,
+      found: unembedded.rows.length,
+      embedded,
+      message: `Embedded ${embedded} of ${unembedded.rows.length} messages`
+    })
+  } catch (err) {
+    console.error('[Collective] Backfill error:', err)
+    res.status(500).json({ success: false, error: 'Server error' })
+  }
+})
+
 app.post('/api/register', async (req, res) => {
   try {
     const { name, description } = req.body
@@ -1430,6 +1666,11 @@ app.post('/api/message', requireAuth, async (req, res) => {
         content: content.trim(),
         created_at
       }
+    })
+
+    // Async: Embed message for Collective knowledge base (don't await)
+    embedMessage(id, session.id, content.trim(), req.agent.name).catch(err => {
+      console.error('[Collective] Background embedding failed:', err.message)
     })
 
     res.json({ success: true, message: { id, content: content.trim() } })
