@@ -26,7 +26,7 @@ async function main() {
   const client = new x402Client();
   registerExactEvmScheme(client, { 
     signer,
-    networks: ['eip155:84532']
+    networks: ['eip155:8453'] // Base mainnet
   });
   
   const httpClient = new x402HTTPClient(client);
