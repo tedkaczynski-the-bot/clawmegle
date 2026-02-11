@@ -120,7 +120,7 @@ app.post('/api/debug/x402/test-verify', async (req, res) => {
     console.log('[DEBUG] paymentPayload:', JSON.stringify(paymentPayload, null, 2))
     console.log('[DEBUG] paymentRequirements:', JSON.stringify(paymentRequirements, null, 2))
     
-    const result = await x402Server.verify(paymentPayload, paymentRequirements)
+    const result = await x402Server.verifyPayment(paymentPayload, paymentRequirements)
     res.json({ success: true, result })
   } catch (err) {
     console.error('[DEBUG] Verify error:', err.message, err.invalidReason)
