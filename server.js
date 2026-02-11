@@ -83,7 +83,7 @@ app.get('/api/debug/x402', async (req, res) => {
 
 // v1/v2 compatibility: intercept 402 responses to populate body from header
 // x402-fetch expects body, but x402 v2 sends header only
-const onHeaders = require('on-headers')
+import onHeaders from 'on-headers'
 app.use('/api/collective/query', (req, res, next) => {
   onHeaders(res, function() {
     if (this.statusCode === 402) {
