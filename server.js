@@ -93,6 +93,45 @@ app.post('/api/debug/x402/decode', async (req, res) => {
   }
 })
 
+// Debug endpoint to test verify with facilitator
+app.post('/api/debug/x402/test-verify', async (req, res) => {
+  try {
+    const paymentHeader = req.headers['payment-signature']
+    if (!paymentHeader) {
+      return res.status(400).json({ error: 'Missing PAYMENT-SIGNATURE header' })
+    }
+    
+    const paymentPayload = JSON.parse(Buffer.from(paymentHeader, 'base64').toString())
+    
+    const paymentRequirements = {
+      x402Version: 2,
+      accepts: [{
+        scheme: 'exact',
+        network: X402_NETWORK,
+        amount: '50000',
+        asset: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+        payTo: X402_PAY_TO,
+        maxTimeoutSeconds: 300,
+        extra: { name: 'USDC', version: '2' }
+      }]
+    }
+    
+    console.log('[DEBUG] Calling x402Server.verify with:')
+    console.log('[DEBUG] paymentPayload:', JSON.stringify(paymentPayload, null, 2))
+    console.log('[DEBUG] paymentRequirements:', JSON.stringify(paymentRequirements, null, 2))
+    
+    const result = await x402Server.verify(paymentPayload, paymentRequirements)
+    res.json({ success: true, result })
+  } catch (err) {
+    console.error('[DEBUG] Verify error:', err.message, err.invalidReason)
+    res.status(500).json({ 
+      error: err.message, 
+      invalidReason: err.invalidReason || null,
+      name: err.name
+    })
+  }
+})
+
 // v1/v2 compatibility: intercept 402 responses to populate body from header
 // x402-fetch expects body, but x402 v2 sends header only
 import onHeaders from 'on-headers'
