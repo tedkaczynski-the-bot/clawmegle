@@ -18,10 +18,8 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-// x402 payment protocol
-import { paymentMiddleware } from '@x402/express'
-import { x402ResourceServer, HTTPFacilitatorClient } from '@x402/core/server'
-import { ExactEvmScheme } from '@x402/evm/exact/server'
+// x402 payment protocol (using x402-express - same ecosystem as game-theory's x402-hono)
+import { paymentMiddleware } from 'x402-express'
 import { getCdpFacilitatorConfig } from './cdp-auth.js'
 
 // Gemini for embeddings (Collective feature)
@@ -29,18 +27,12 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY
 
 // x402 configuration
 const X402_PAY_TO = process.env.X402_PAY_TO || '0x81FD234f63Dd559d0EDA56d17BB1Bb78f236DB37' // deployer wallet
-const X402_NETWORK = process.env.X402_NETWORK || 'eip155:84532' // Base Sepolia testnet
+const X402_NETWORK = process.env.X402_NETWORK || 'base-sepolia' // x402-express uses network names, not CAIP-2
 const X402_PRICE = process.env.X402_PRICE || '$0.05' // $0.05 per query
 
-// Initialize x402 server with custom CDP JWT auth (same approach as game-theory agent)
+// CDP facilitator config
 const cdpConfig = getCdpFacilitatorConfig()
-const facilitatorClient = new HTTPFacilitatorClient(cdpConfig)
-const x402Server = new x402ResourceServer(facilitatorClient)
-  .register(X402_NETWORK, new ExactEvmScheme())
-
-// Initialize x402 server (validates facilitator connection)
-await x402Server.initialize()
-console.log(`x402 server initialized with CDP facilitator for ${X402_NETWORK}`)
+console.log(`x402 payments enabled on ${X402_NETWORK} to ${X402_PAY_TO}`)
 
 const app = express()
 const server = http.createServer(app)
@@ -93,43 +85,7 @@ app.post('/api/debug/x402/decode', async (req, res) => {
   }
 })
 
-// Debug endpoint to test verify with facilitator
-app.post('/api/debug/x402/test-verify', async (req, res) => {
-  try {
-    const paymentHeader = req.headers['payment-signature']
-    if (!paymentHeader) {
-      return res.status(400).json({ error: 'Missing PAYMENT-SIGNATURE header' })
-    }
-    
-    const paymentPayload = JSON.parse(Buffer.from(paymentHeader, 'base64').toString())
-    
-    // Get the facilitator client and call verify directly
-    const fc = x402Server.getFacilitatorClient()
-    
-    const paymentRequirements = {
-      scheme: 'exact',
-      network: X402_NETWORK,
-      amount: '50000',
-      asset: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
-      payTo: X402_PAY_TO,
-      maxTimeoutSeconds: 300,
-      extra: { name: 'USDC', version: '2' }
-    }
-    
-    console.log('[DEBUG] Calling facilitator.verify directly')
-    console.log('[DEBUG] paymentPayload keys:', Object.keys(paymentPayload))
-    
-    const result = await fc.verify(paymentPayload, paymentRequirements)
-    res.json({ success: true, result })
-  } catch (err) {
-    console.error('[DEBUG] Verify error:', err.message, err.invalidReason)
-    res.status(500).json({ 
-      error: err.message, 
-      invalidReason: err.invalidReason || null,
-      name: err.name
-    })
-  }
-})
+// Debug endpoint removed - using x402-express now
 
 // v1/v2 compatibility: intercept 402 responses to populate body from header
 // x402-fetch expects body, but x402 v2 sends header only
@@ -161,24 +117,17 @@ app.use('/api/collective/query', (req, res, next) => {
   next()
 })
 
-// x402 payment middleware for Collective endpoint
+// x402 payment middleware for Collective endpoint (x402-express API)
 app.use(
   paymentMiddleware(
+    X402_PAY_TO,
     {
       'POST /api/collective/query': {
-        accepts: [
-          {
-            scheme: 'exact',
-            price: X402_PRICE,
-            network: X402_NETWORK,
-            payTo: X402_PAY_TO,
-          },
-        ],
-        description: 'Query the Clawmegle Collective - AI-to-AI conversation knowledge base',
-        mimeType: 'application/json',
+        price: X402_PRICE,
+        network: X402_NETWORK,
       },
     },
-    x402Server
+    cdpConfig
   )
 )
 
