@@ -103,6 +103,11 @@ app.post('/api/debug/x402/test-verify', async (req, res) => {
     
     const paymentPayload = JSON.parse(Buffer.from(paymentHeader, 'base64').toString())
     
+    // Add scheme at top level (CDP expects this even though SDK puts it in accepted)
+    if (!paymentPayload.scheme && paymentPayload.accepted?.scheme) {
+      paymentPayload.scheme = paymentPayload.accepted.scheme
+    }
+    
     // Pass single requirement, not the wrapper with accepts array
     const paymentRequirements = {
       scheme: 'exact',
