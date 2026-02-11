@@ -103,17 +103,15 @@ app.post('/api/debug/x402/test-verify', async (req, res) => {
     
     const paymentPayload = JSON.parse(Buffer.from(paymentHeader, 'base64').toString())
     
+    // Pass single requirement, not the wrapper with accepts array
     const paymentRequirements = {
-      x402Version: 2,
-      accepts: [{
-        scheme: 'exact',
-        network: X402_NETWORK,
-        amount: '50000',
-        asset: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
-        payTo: X402_PAY_TO,
-        maxTimeoutSeconds: 300,
-        extra: { name: 'USDC', version: '2' }
-      }]
+      scheme: 'exact',
+      network: X402_NETWORK,
+      amount: '50000',
+      asset: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+      payTo: X402_PAY_TO,
+      maxTimeoutSeconds: 300,
+      extra: { name: 'USDC', version: '2' }
     }
     
     console.log('[DEBUG] Calling x402Server.verify with:')
