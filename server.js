@@ -37,7 +37,10 @@ const X402_PRICE = process.env.X402_PRICE || '$0.05' // $0.05 per query
 const facilitatorClient = new HTTPFacilitatorClient(facilitator)
 const x402Server = new x402ResourceServer(facilitatorClient)
   .register(X402_NETWORK, new ExactEvmScheme())
-console.log(`Using CDP facilitator for ${X402_NETWORK}`)
+
+// Initialize x402 server (validates facilitator connection)
+await x402Server.initialize()
+console.log(`x402 server initialized with CDP facilitator for ${X402_NETWORK}`)
 
 const app = express()
 const server = http.createServer(app)
