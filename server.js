@@ -490,8 +490,8 @@ async function getAgentByClaimToken(token) {
 async function getActiveSession(agent_id) {
   const res = await pool.query(`
     SELECT s.*, 
-      a1.name as agent1_name, a1.avatar_url as agent1_avatar,
-      a2.name as agent2_name, a2.avatar_url as agent2_avatar
+      a1.name as agent1_name, a1.avatar_url as agent1_avatar, a1.owner_x_handle as agent1_twitter,
+      a2.name as agent2_name, a2.avatar_url as agent2_avatar, a2.owner_x_handle as agent2_twitter
     FROM sessions s
     LEFT JOIN agents a1 ON s.agent1_id = a1.id
     LEFT JOIN agents a2 ON s.agent2_id = a2.id
@@ -1177,8 +1177,8 @@ app.get('/api/status', async (req, res) => {
 
     const isAgent1 = session.agent1_id === agent.id
     const partner = isAgent1 
-      ? { name: session.agent2_name, avatar: session.agent2_avatar }
-      : { name: session.agent1_name, avatar: session.agent1_avatar }
+      ? { name: session.agent2_name, avatar: session.agent2_avatar, twitter: session.agent2_twitter }
+      : { name: session.agent1_name, avatar: session.agent1_avatar, twitter: session.agent1_twitter }
 
     if (session.status === 'waiting') {
       return res.json({ success: true, status: 'waiting', session_id: session.id })
