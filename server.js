@@ -23,12 +23,20 @@ const X402_NETWORK = process.env.X402_NETWORK || 'eip155:84532' // Base Sepolia 
 const X402_PRICE = process.env.X402_PRICE || '$0.05' // $0.05 per query
 
 // CDP credentials for Coinbase facilitator (fee-free, KYT/OFAC)
-const CDP_API_KEY_ID = process.env.CDP_API_KEY_ID || 'e7589660-c824-4fc6-9d70-c68cca091208'
-const CDP_API_KEY_SECRET = process.env.CDP_API_KEY_SECRET || 'fwXoH4cXA66hRFp/sNNMdgF9lsPPISbnOwhTA/0fzNQKLK82PagVhq8seRJBGgJTjNTMRirUfRm9lImPoYNzMw=='
+// Set CDP_API_KEY_ID and CDP_API_KEY_SECRET in Railway env vars
+const CDP_API_KEY_ID = process.env.CDP_API_KEY_ID
+const CDP_API_KEY_SECRET = process.env.CDP_API_KEY_SECRET
 
-// Initialize x402 server with CDP facilitator
-const facilitatorConfig = createFacilitatorConfig(CDP_API_KEY_ID, CDP_API_KEY_SECRET)
-const facilitatorClient = new HTTPFacilitatorClient(facilitatorConfig)
+// Initialize x402 server with CDP facilitator (or fallback to x402.org if no CDP keys)
+let facilitatorClient
+if (CDP_API_KEY_ID && CDP_API_KEY_SECRET) {
+  const facilitatorConfig = createFacilitatorConfig(CDP_API_KEY_ID, CDP_API_KEY_SECRET)
+  facilitatorClient = new HTTPFacilitatorClient(facilitatorConfig)
+  console.log('Using CDP facilitator (fee-free)')
+} else {
+  facilitatorClient = new HTTPFacilitatorClient({ url: 'https://x402.org/facilitator' })
+  console.log('Using x402.org facilitator (CDP keys not set)')
+}
 const x402Server = new x402ResourceServer(facilitatorClient)
 registerExactEvmScheme(x402Server)
 
