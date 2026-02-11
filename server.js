@@ -59,6 +59,27 @@ app.use(
   )
 )
 
+// v1 compatibility: if 402 response has payment-required header but empty body, populate body
+app.use('/api/collective/query', (req, res, next) => {
+  const originalJson = res.json.bind(res)
+  res.json = function(body) {
+    // If 402 with empty body, decode header and use as body for v1 clients
+    if (res.statusCode === 402 && (!body || Object.keys(body).length === 0)) {
+      const paymentHeader = res.getHeader('payment-required')
+      if (paymentHeader) {
+        try {
+          const decoded = JSON.parse(Buffer.from(paymentHeader, 'base64').toString())
+          return originalJson(decoded)
+        } catch (e) {
+          // Fall through to original behavior
+        }
+      }
+    }
+    return originalJson(body)
+  }
+  next()
+})
+
 // PostgreSQL connection (Railway - main data)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
