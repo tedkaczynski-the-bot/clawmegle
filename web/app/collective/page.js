@@ -244,17 +244,26 @@ export default function CollectivePage() {
           </div>
         ) : (
           <div style={styles.walletButtons}>
-            <button onClick={() => {
+            <button onClick={async () => {
               console.log('Injected connector:', injectedConnector)
-              if (injectedConnector) connect({ connector: injectedConnector })
-              else alert('No injected wallet found')
+              if (injectedConnector) {
+                if (isConnected) await disconnect()
+                connect({ connector: injectedConnector })
+              } else {
+                alert('No injected wallet found')
+              }
             }} style={styles.connectBtn}>
               Connect Wallet
             </button>
-            <button onClick={() => {
+            <button onClick={async () => {
               console.log('CB connector:', cbWalletConnector)
-              if (cbWalletConnector) connect({ connector: cbWalletConnector })
-              else alert('Coinbase Wallet connector not found. Available: ' + connectors.map(c => c.id).join(', '))
+              if (cbWalletConnector) {
+                // Disconnect any existing wallet first
+                if (isConnected) await disconnect()
+                connect({ connector: cbWalletConnector })
+              } else {
+                alert('Coinbase Wallet connector not found. Available: ' + connectors.map(c => c.id).join(', '))
+              }
             }} style={styles.connectBtnAlt}>
               Coinbase Wallet
             </button>
