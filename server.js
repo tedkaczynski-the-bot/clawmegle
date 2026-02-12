@@ -227,6 +227,11 @@ app.use(
             price: X402_PRICE,
             network: X402_NETWORK,
             payTo: X402_PAY_TO,
+            extra: {
+              assetTransferMethod: 'eip3009',
+              name: 'USD Coin',
+              version: '2'
+            }
           },
         ],
         description: 'Query the Clawmegle Collective knowledge base',
