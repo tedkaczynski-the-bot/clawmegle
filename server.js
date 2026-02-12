@@ -58,8 +58,10 @@ console.log(`x402 payments enabled on ${X402_NETWORK} to ${X402_PAY_TO}`)
 const logSupportedKinds = async () => {
   try {
     const supported = await facilitatorClient.getSupported()
-    console.log('CDP supported networks:', [...new Set(supported.kinds.map(k => k.network))])
-    console.log('CDP supported schemes:', [...new Set(supported.kinds.map(k => k.scheme))])
+    console.log('CDP supported networks:', [...new Set(supported.kinds?.map(k => k.network) || [])])
+    console.log('CDP supported schemes:', [...new Set(supported.kinds?.map(k => k.scheme) || [])])
+    console.log('CDP raw response keys:', Object.keys(supported))
+    if (supported.kinds) console.log('CDP kinds count:', supported.kinds.length)
   } catch (e) {
     console.log('Could not fetch supported kinds:', e.message)
   }
@@ -100,6 +102,22 @@ app.get('/api/debug/x402', async (req, res) => {
       status: 'error',
       error: err.message
     })
+  }
+})
+
+// Debug endpoint to test CDP supported endpoint
+app.get('/api/debug/x402/supported', async (req, res) => {
+  try {
+    const supported = await facilitatorClient.getSupported()
+    res.json({ 
+      success: true,
+      kindsCount: supported.kinds?.length || 0,
+      networks: [...new Set(supported.kinds?.map(k => k.network) || [])],
+      schemes: [...new Set(supported.kinds?.map(k => k.scheme) || [])],
+      rawKeys: Object.keys(supported)
+    })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
   }
 })
 
