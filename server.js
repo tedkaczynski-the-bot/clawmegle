@@ -22,7 +22,13 @@ const __dirname = path.dirname(__filename)
 import { paymentMiddleware, x402ResourceServer } from '@x402/express'
 import { ExactEvmScheme } from '@x402/evm/exact/server'
 import { HTTPFacilitatorClient } from '@x402/core/server'
-import { facilitator as cdpFacilitator } from '@coinbase/x402'
+import { createFacilitatorConfig } from '@coinbase/x402'
+
+// Create CDP facilitator with explicit credentials (env vars must be set)
+const cdpFacilitator = createFacilitatorConfig(
+  process.env.CDP_API_KEY_ID,
+  process.env.CDP_API_KEY_SECRET
+)
 
 // Gemini for embeddings (Collective feature)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
