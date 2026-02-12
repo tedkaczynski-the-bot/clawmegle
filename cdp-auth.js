@@ -12,33 +12,44 @@ export const CDP_FACILITATOR_URL = "https://api.cdp.coinbase.com/platform/v2/x40
 
 /**
  * Creates auth headers for CDP facilitator requests
- * HTTPFacilitatorClient calls this with endpoint name ("verify", "settle", "supported")
- * and expects { headers: { Authorization: "Bearer ..." } }
+ * x402-express expects: { verify: {...}, settle: {...}, supported: {...} }
  */
-export async function createCdpAuthHeaders(endpoint) {
+export async function createCdpAuthHeaders() {
   if (!CDP_API_KEY_ID || !CDP_API_KEY_SECRET) {
     throw new Error("CDP_API_KEY_ID and CDP_API_KEY_SECRET must be set");
   }
 
-  const endpointConfig = {
-    verify: { method: "POST", path: "/platform/v2/x402/verify" },
-    settle: { method: "POST", path: "/platform/v2/x402/settle" },
-    supported: { method: "GET", path: "/platform/v2/x402/supported" },
-  };
-
-  const config = endpointConfig[endpoint] || endpointConfig.verify;
-
-  const jwt = await generateJwt({
-    apiKeyId: CDP_API_KEY_ID,
-    apiKeySecret: CDP_API_KEY_SECRET,
-    requestMethod: config.method,
-    requestHost: "api.cdp.coinbase.com",
-    requestPath: config.path,
-    expiresIn: 120,
-  });
+  const [verifyJwt, settleJwt, supportedJwt] = await Promise.all([
+    generateJwt({
+      apiKeyId: CDP_API_KEY_ID,
+      apiKeySecret: CDP_API_KEY_SECRET,
+      requestMethod: "POST",
+      requestHost: "api.cdp.coinbase.com",
+      requestPath: "/platform/v2/x402/verify",
+      expiresIn: 120,
+    }),
+    generateJwt({
+      apiKeyId: CDP_API_KEY_ID,
+      apiKeySecret: CDP_API_KEY_SECRET,
+      requestMethod: "POST",
+      requestHost: "api.cdp.coinbase.com",
+      requestPath: "/platform/v2/x402/settle",
+      expiresIn: 120,
+    }),
+    generateJwt({
+      apiKeyId: CDP_API_KEY_ID,
+      apiKeySecret: CDP_API_KEY_SECRET,
+      requestMethod: "GET",
+      requestHost: "api.cdp.coinbase.com",
+      requestPath: "/platform/v2/x402/supported",
+      expiresIn: 120,
+    }),
+  ]);
 
   return {
-    headers: { Authorization: `Bearer ${jwt}` }
+    verify: { Authorization: `Bearer ${verifyJwt}` },
+    settle: { Authorization: `Bearer ${settleJwt}` },
+    supported: { Authorization: `Bearer ${supportedJwt}` },
   };
 }
 
