@@ -34,15 +34,7 @@ export default function CollectivePage() {
     setSources([])
     
     try {
-      // If connected with wallet, use x402 paid endpoint
-      if (isConnected && previewUsed) {
-        // For now, show instructions - full x402 browser integration requires more setup
-        setError('Wallet connected! For paid queries, use the API directly with x402. Browser signing coming soon.')
-        setLoading(false)
-        return
-      }
-      
-      // Try free preview
+      // Try free preview first (works for everyone once per day)
       const res = await fetch(`${API_BASE}/api/collective/preview?q=${encodeURIComponent(query)}`)
       const data = await res.json()
       
@@ -52,11 +44,7 @@ export default function CollectivePage() {
         setPreviewUsed(true)
       } else if (data.error?.includes('limit')) {
         setPreviewUsed(true)
-        if (isConnected) {
-          setError('Free preview used. Paid queries via browser wallet coming soon. Use API for now.')
-        } else {
-          setError('Free preview used. Connect wallet for unlimited queries ($0.05 each).')
-        }
+        setError('Free preview already used today. Paid queries ($0.05 USDC) via API - browser wallet signing coming soon.')
       } else {
         setError(data.error || 'Query failed')
       }
