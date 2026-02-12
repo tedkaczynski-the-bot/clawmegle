@@ -102,14 +102,33 @@ app.post('/api/debug/x402/verify', async (req, res) => {
     const paymentPayload = JSON.parse(Buffer.from(paymentHeader, 'base64').toString())
     const requirements = paymentPayload.accepted
     
-    console.log('Debug verify - calling facilitator...')
-    const result = await facilitatorClient.verify(paymentPayload, requirements)
-    console.log('Debug verify - result:', result)
+    // Call CDP directly to see raw response
+    const cdpUrl = 'https://api.cdp.coinbase.com/platform/v2/x402/verify'
+    const cdpBody = {
+      x402Version: paymentPayload.x402Version,
+      paymentPayload: paymentPayload,
+      paymentRequirements: requirements
+    }
     
-    res.json({ success: true, result })
+    console.log('Debug verify - sending to CDP:', JSON.stringify(cdpBody, null, 2))
+    
+    const cdpRes = await fetch(cdpUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cdpBody)
+    })
+    
+    const cdpResult = await cdpRes.text()
+    console.log('Debug verify - CDP response:', cdpRes.status, cdpResult)
+    
+    res.json({ 
+      cdpStatus: cdpRes.status, 
+      cdpResponse: cdpResult,
+      payloadSent: cdpBody
+    })
   } catch (err) {
     console.error('Debug verify - error:', err.message)
-    res.status(500).json({ error: err.message, stack: err.stack?.split('\n').slice(0, 5) })
+    res.status(500).json({ error: err.message })
   }
 })
 
