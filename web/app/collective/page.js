@@ -555,7 +555,7 @@ const styles = {
   },
   codeText: {
     flex: 1,
-    color: '#d4f1f9',
+    color: '#ffffff',
     fontFamily: '"SF Mono", "Fira Code", Monaco, monospace',
     fontSize: '13px',
     textAlign: 'left',
