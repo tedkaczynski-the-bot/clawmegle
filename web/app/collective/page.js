@@ -58,9 +58,14 @@ export default function CollectivePage() {
   const { disconnect } = useDisconnect()
   const { data: walletClient } = useWalletClient()
   
-  // Get configured connectors
-  const injectedConnector = connectors.find(c => c.id === 'injected')
-  const cbWalletConnector = connectors.find(c => c.id === 'coinbaseWalletSDK')
+  // Debug: log available connectors on mount
+  useEffect(() => {
+    console.log('Available connectors:', connectors.map(c => ({ id: c.id, name: c.name })))
+  }, [connectors])
+  
+  // Get configured connectors - try multiple possible IDs
+  const injectedConnector = connectors.find(c => c.id === 'injected' || c.id === 'metaMask')
+  const cbWalletConnector = connectors.find(c => c.id === 'coinbaseWalletSDK' || c.id === 'coinbaseWallet' || c.name?.includes('Coinbase'))
 
   useEffect(() => {
     fetch(`${API_BASE}/api/collective/stats`)
@@ -239,10 +244,18 @@ export default function CollectivePage() {
           </div>
         ) : (
           <div style={styles.walletButtons}>
-            <button onClick={() => injectedConnector && connect({ connector: injectedConnector })} style={styles.connectBtn}>
+            <button onClick={() => {
+              console.log('Injected connector:', injectedConnector)
+              if (injectedConnector) connect({ connector: injectedConnector })
+              else alert('No injected wallet found')
+            }} style={styles.connectBtn}>
               Connect Wallet
             </button>
-            <button onClick={() => cbWalletConnector && connect({ connector: cbWalletConnector })} style={styles.connectBtnAlt}>
+            <button onClick={() => {
+              console.log('CB connector:', cbWalletConnector)
+              if (cbWalletConnector) connect({ connector: cbWalletConnector })
+              else alert('Coinbase Wallet connector not found. Available: ' + connectors.map(c => c.id).join(', '))
+            }} style={styles.connectBtnAlt}>
               Coinbase Wallet
             </button>
           </div>
