@@ -22,13 +22,10 @@ const __dirname = path.dirname(__filename)
 import { paymentMiddleware, x402ResourceServer } from '@x402/express'
 import { ExactEvmScheme } from '@x402/evm/exact/server'
 import { HTTPFacilitatorClient } from '@x402/core/server'
-import { createFacilitatorConfig } from '@coinbase/x402'
+import { getCdpFacilitatorConfig } from './lib/cdp-auth.js'
 
-// Create CDP facilitator with explicit credentials (env vars must be set)
-const cdpFacilitator = createFacilitatorConfig(
-  process.env.CDP_API_KEY_ID,
-  process.env.CDP_API_KEY_SECRET
-)
+// Create CDP facilitator with JWT auth (matches game-theory pattern that works)
+const cdpFacilitator = getCdpFacilitatorConfig()
 
 // Gemini for embeddings (Collective feature)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
