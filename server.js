@@ -22,6 +22,7 @@ const __dirname = path.dirname(__filename)
 import { paymentMiddleware, x402ResourceServer } from '@x402/express'
 import { ExactEvmScheme } from '@x402/evm/exact/server'
 import { HTTPFacilitatorClient } from '@x402/core/server'
+import { facilitator as cdpFacilitator } from '@coinbase/x402'
 
 // Gemini for embeddings (Collective feature)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
@@ -31,10 +32,11 @@ const X402_PAY_TO = process.env.X402_PAY_TO || '0x81FD234f63Dd559d0EDA56d17BB1Bb
 const X402_NETWORK = process.env.X402_NETWORK || 'eip155:8453' // Base mainnet in CAIP-2 format
 const X402_PRICE = process.env.X402_PRICE || '$0.05' // $0.05 per query
 
-// Create facilitator client (testnet uses public facilitator, mainnet uses CDP)
-const facilitatorClient = new HTTPFacilitatorClient({
-  url: 'https://www.x402.org/facilitator'
-})
+// Create facilitator client (mainnet uses CDP facilitator)
+const isMainnet = X402_NETWORK === 'eip155:8453'
+const facilitatorClient = new HTTPFacilitatorClient(
+  isMainnet ? cdpFacilitator : { url: 'https://www.x402.org/facilitator' }
+)
 
 // Create resource server and register EVM scheme
 const x402Server = new x402ResourceServer(facilitatorClient)
