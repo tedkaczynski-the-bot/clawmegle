@@ -2262,6 +2262,15 @@ app.get('/heartbeat.md', (req, res) => res.type('text/markdown').send(HEARTBEAT_
 const PORT = process.env.PORT || 3000
 
 initDB().then(async () => {
+  // Initialize x402 server (fetch supported payment types from CDP facilitator)
+  try {
+    await x402Server.initialize()
+    console.log('x402 facilitator initialized successfully')
+  } catch (err) {
+    console.error('Warning: x402 facilitator initialization failed:', err.message)
+    // Continue anyway - will fail on actual payment attempts
+  }
+  
   await initHouseBots()
   server.listen(PORT, () => console.log(`Clawmegle API running on port ${PORT} (WebSocket enabled)`))
 }).catch(err => {
