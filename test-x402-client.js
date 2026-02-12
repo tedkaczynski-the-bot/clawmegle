@@ -1,4 +1,4 @@
-import { x402Client, wrapFetchWithPayment } from '@x402/fetch';
+import { x402Client, wrapFetchWithPayment, x402HTTPClient } from '@x402/fetch';
 import { registerExactEvmScheme } from '@x402/evm/exact/client';
 import { privateKeyToAccount } from 'viem/accounts';
 import fs from 'fs';
@@ -8,46 +8,61 @@ const pkPath = process.env.HOME + '/.clawdbot/wallets/.deployer_pk';
 let privateKey = fs.readFileSync(pkPath, 'utf8').trim();
 if (!privateKey.startsWith('0x')) privateKey = '0x' + privateKey;
 
-// Create signer
-const signer = privateKeyToAccount(privateKey);
-console.log('Wallet:', signer.address);
+const account = privateKeyToAccount(privateKey);
+console.log('Wallet:', account.address);
 
-// Create x402 client and register EVM scheme
 const client = new x402Client();
-registerExactEvmScheme(client, { signer });
+registerExactEvmScheme(client, { signer: account });
 
-// Wrap fetch with payment handling
-const fetchWithPayment = wrapFetchWithPayment(fetch, client);
+const httpClient = new x402HTTPClient(client);
 
-// Test query
-async function testQuery() {
-  try {
-    console.log('Making paid request to Collective API...');
-    const response = await fetchWithPayment('https://www.clawmegle.xyz/api/collective/query', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: 'what do AI agents talk about?' })
-    });
-    
-    console.log('Response status:', response.status);
-    
-    if (response.ok) {
-      const data = await response.json();
-      console.log('Data:', JSON.stringify(data, null, 2));
-      
-      // Check payment header
-      const paymentHeader = response.headers.get('payment-response');
-      if (paymentHeader) {
-        console.log('Payment settled!');
-      }
-    } else {
-      const text = await response.text();
-      console.log('Error response:', text);
-    }
-  } catch (err) {
-    console.error('Error:', err.message);
-    if (err.stack) console.error(err.stack);
-  }
+async function test() {
+  // Step 1: Get 402
+  console.log('\n1. Getting payment requirements...');
+  const res1 = await fetch('https://clawmegle-production.up.railway.app/api/collective/query', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query: 'test' })
+  });
+  
+  const getHeader = (name) => res1.headers.get(name);
+  const paymentRequired = httpClient.getPaymentRequiredResponse(getHeader, {});
+  console.log('   Got requirements');
+
+  // Step 2: Create payload
+  console.log('\n2. Creating payment...');
+  const paymentPayload = await client.createPaymentPayload(paymentRequired);
+  console.log('   Payload x402Version:', paymentPayload.x402Version);
+  
+  // Step 3: Encode
+  const paymentHeaders = httpClient.encodePaymentSignatureHeader(paymentPayload);
+  const signature = paymentHeaders['PAYMENT-SIGNATURE'];
+  
+  // Decode to see what we're sending
+  const decoded = JSON.parse(Buffer.from(signature, 'base64').toString());
+  console.log('\n3. Payment signature contents:');
+  console.log(JSON.stringify(decoded, null, 2));
+
+  // Step 4: Send with payment
+  console.log('\n4. Sending with payment...');
+  const res2 = await fetch('https://clawmegle-production.up.railway.app/api/collective/query', {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'PAYMENT-SIGNATURE': signature
+    },
+    body: JSON.stringify({ query: 'what do AI agents talk about?' })
+  });
+  
+  console.log('   Status:', res2.status);
+  
+  // Check for error response
+  const responseHeaders = {};
+  res2.headers.forEach((v, k) => responseHeaders[k] = v);
+  console.log('   Response headers:', Object.keys(responseHeaders).filter(k => k.toLowerCase().includes('payment')));
+  
+  const body = await res2.text();
+  console.log('   Body:', body.slice(0, 500));
 }
 
-testQuery();
+test().catch(e => console.error('Error:', e));

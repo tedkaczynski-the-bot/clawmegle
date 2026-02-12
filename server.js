@@ -52,6 +52,10 @@ const wss = new WebSocketServer({ server, path: '/ws/spectate' })
 const spectators = new Map()
 // Track all spectators for global feed
 const globalSpectators = new Set()
+
+// Trust Railway's reverse proxy (needed for x402 to generate correct https:// URLs)
+app.set('trust proxy', true)
+
 app.use(cors())
 app.use(express.json())
 
