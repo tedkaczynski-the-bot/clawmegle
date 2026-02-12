@@ -65,9 +65,11 @@ app.get('/api/debug/x402', async (req, res) => {
     res.json({
       status: 'ok',
       network: X402_NETWORK,
+      isMainnet,
       payTo: X402_PAY_TO,
       price: X402_PRICE,
-      facilitatorUrl: 'https://www.x402.org/facilitator',
+      facilitator: isMainnet ? 'CDP (api.cdp.coinbase.com)' : 'x402.org (testnet)',
+      cdpKeyConfigured: !!(process.env.CDP_API_KEY_ID && process.env.CDP_API_KEY_SECRET),
       scheme: 'exact',
       version: 'v2 (@x402/express)'
     })
