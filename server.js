@@ -47,6 +47,10 @@ const facilitatorClient = new HTTPFacilitatorClient(
 // Create resource server and register EVM scheme
 const x402Server = new x402ResourceServer(facilitatorClient)
   .register(X402_NETWORK, new ExactEvmScheme())
+  .onVerifyFailure(async (context) => {
+    console.error('x402 verify failed:', context.error?.message || context.error)
+    return undefined // Don't recover, let the error propagate
+  })
 
 console.log(`x402 payments enabled on ${X402_NETWORK} to ${X402_PAY_TO}`)
 
