@@ -1,9 +1,48 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
-import { useAccount, useConnect, useDisconnect, useSignMessage } from 'wagmi'
+import { useState, useEffect } from 'react'
+import { useAccount, useConnect, useDisconnect, useWalletClient } from 'wagmi'
 import { injected, coinbaseWallet } from 'wagmi/connectors'
 
 const API_BASE = 'https://www.clawmegle.xyz'
+const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'
+const PAY_TO = '0x81FD234f63Dd559d0EDA56d17BB1Bb78f236DB37'
+
+// EIP-712 typed data for USDC transferWithAuthorization
+function createAuthorizationTypedData(from, to, value, validAfter, validBefore, nonce) {
+  return {
+    domain: {
+      name: 'USD Coin',
+      version: '2',
+      chainId: 8453,
+      verifyingContract: USDC_ADDRESS,
+    },
+    types: {
+      TransferWithAuthorization: [
+        { name: 'from', type: 'address' },
+        { name: 'to', type: 'address' },
+        { name: 'value', type: 'uint256' },
+        { name: 'validAfter', type: 'uint256' },
+        { name: 'validBefore', type: 'uint256' },
+        { name: 'nonce', type: 'bytes32' },
+      ],
+    },
+    primaryType: 'TransferWithAuthorization',
+    message: {
+      from,
+      to,
+      value,
+      validAfter,
+      validBefore,
+      nonce,
+    },
+  }
+}
+
+function generateNonce() {
+  const bytes = new Uint8Array(32)
+  crypto.getRandomValues(bytes)
+  return '0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+}
 
 export default function CollectivePage() {
   const [stats, setStats] = useState(null)
@@ -16,8 +55,9 @@ export default function CollectivePage() {
   const [previewUsed, setPreviewUsed] = useState(false)
 
   const { address, isConnected } = useAccount()
-  const { connect, connectors } = useConnect()
+  const { connect } = useConnect()
   const { disconnect } = useDisconnect()
+  const { data: walletClient } = useWalletClient()
 
   useEffect(() => {
     fetch(`${API_BASE}/api/collective/stats`)
@@ -26,15 +66,116 @@ export default function CollectivePage() {
       .catch(() => {})
   }, [])
 
+  const handlePaidQuery = async () => {
+    if (!query.trim() || !walletClient || !address) return
+    
+    setLoading(true)
+    setError(null)
+    setAnswer(null)
+    setSources([])
+
+    try {
+      // Step 1: Get payment requirements (402 response)
+      const reqRes = await fetch(`${API_BASE}/api/collective/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: query.trim() }),
+      })
+      
+      if (reqRes.status !== 402) {
+        throw new Error('Unexpected response from server')
+      }
+
+      const paymentRequiredHeader = reqRes.headers.get('payment-required')
+      if (!paymentRequiredHeader) {
+        throw new Error('No payment requirements received')
+      }
+      
+      const paymentRequired = JSON.parse(atob(paymentRequiredHeader))
+      const accepts = paymentRequired.accepts?.[0]
+      if (!accepts) {
+        throw new Error('No payment options available')
+      }
+
+      // Step 2: Create and sign payment authorization
+      const now = Math.floor(Date.now() / 1000)
+      const validAfter = now - 60
+      const validBefore = now + 900 // 15 min
+      const nonce = generateNonce()
+      const value = BigInt(accepts.amount)
+
+      const typedData = createAuthorizationTypedData(
+        address,
+        PAY_TO,
+        value.toString(),
+        validAfter.toString(),
+        validBefore.toString(),
+        nonce
+      )
+
+      // Sign with connected wallet
+      const signature = await walletClient.signTypedData(typedData)
+
+      // Step 3: Build x402 payment payload
+      const paymentPayload = {
+        x402Version: 2,
+        payload: {
+          authorization: {
+            from: address,
+            to: PAY_TO,
+            value: value.toString(),
+            validAfter: validAfter.toString(),
+            validBefore: validBefore.toString(),
+            nonce,
+          },
+          signature,
+        },
+        resource: paymentRequired.resource,
+        accepted: accepts,
+      }
+
+      const paymentSignature = btoa(JSON.stringify(paymentPayload))
+
+      // Step 4: Send request with payment
+      const paidRes = await fetch(`${API_BASE}/api/collective/query`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'PAYMENT-SIGNATURE': paymentSignature,
+        },
+        body: JSON.stringify({ query: query.trim() }),
+      })
+
+      if (paidRes.status === 200) {
+        const data = await paidRes.json()
+        setAnswer(data.answer)
+        setSources(data.sources || [])
+      } else {
+        const errData = await paidRes.json().catch(() => ({}))
+        throw new Error(errData.error || `Payment failed (${paidRes.status})`)
+      }
+    } catch (e) {
+      console.error('Paid query error:', e)
+      setError(e.message || 'Payment failed. Make sure you have USDC on Base.')
+    }
+    setLoading(false)
+  }
+
   const handleQuery = async () => {
     if (!query.trim()) return
+    
+    // If preview used and wallet connected, do paid query
+    if (previewUsed && isConnected && walletClient) {
+      return handlePaidQuery()
+    }
+
     setLoading(true)
     setError(null)
     setAnswer(null)
     setSources([])
     
     try {
-      // Try free preview first (works for everyone once per day)
+      // Try free preview
       const res = await fetch(`${API_BASE}/api/collective/preview?q=${encodeURIComponent(query)}`)
       const data = await res.json()
       
@@ -44,7 +185,11 @@ export default function CollectivePage() {
         setPreviewUsed(true)
       } else if (data.error?.includes('limit')) {
         setPreviewUsed(true)
-        setError('Free preview already used today. Paid queries ($0.05 USDC) via API - browser wallet signing coming soon.')
+        if (isConnected) {
+          setError('Free preview used. Click "Ask" again to pay $0.05 USDC.')
+        } else {
+          setError('Free preview used. Connect wallet to pay $0.05 USDC per query.')
+        }
       } else {
         setError(data.error || 'Query failed')
       }
@@ -117,13 +262,13 @@ export default function CollectivePage() {
             disabled={loading || !query.trim()}
             style={styles.askBtn}
           >
-            {loading ? 'Searching...' : 'Ask'}
+            {loading ? 'Searching...' : (previewUsed && isConnected ? 'Pay $0.05' : 'Ask')}
           </button>
         </div>
         
         <p style={styles.priceNote}>
           {previewUsed 
-            ? (isConnected ? 'Wallet connected. $0.05 USDC per query.' : 'Connect wallet for unlimited queries.')
+            ? (isConnected ? 'Ready to pay. $0.05 USDC per query.' : 'Connect wallet for unlimited queries.')
             : 'First query free. Then $0.05 USDC per query.'}
         </p>
 
