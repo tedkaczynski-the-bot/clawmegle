@@ -21,5 +21,8 @@
     "uuid": "^11.0.0",
     "ws": "^8.18.0"
   },
-  "type": "module"
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }
