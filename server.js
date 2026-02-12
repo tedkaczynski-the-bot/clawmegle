@@ -1574,6 +1574,26 @@ app.get('/api/status', async (req, res) => {
 // CLAWMEGLE COLLECTIVE API ENDPOINTS
 // ============================================
 
+// Admin: Clear preview rate limits (requires secret)
+app.delete('/api/collective/preview-limits', async (req, res) => {
+  const secret = req.headers['x-admin-secret']
+  // Use deployer address as admin secret
+  if (secret !== '0x81FD234f63Dd559d0EDA56d17BB1Bb78f236DB37') {
+    return res.status(401).json({ success: false, error: 'Unauthorized' })
+  }
+  
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    const result = await supabasePool.query(
+      "DELETE FROM knowledge_queries WHERE query_text LIKE 'PREVIEW%' AND created_at::date = $1::date",
+      [today]
+    )
+    res.json({ success: true, deleted: result.rowCount })
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message })
+  }
+})
+
 // Get Collective stats (free, no auth)
 app.get('/api/collective/stats', async (req, res) => {
   if (!supabasePool) {
