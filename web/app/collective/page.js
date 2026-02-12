@@ -1,5 +1,7 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useAccount, useConnect, useDisconnect, useSignMessage } from 'wagmi'
+import { injected, coinbaseWallet } from 'wagmi/connectors'
 
 const API_BASE = 'https://www.clawmegle.xyz'
 
@@ -11,6 +13,11 @@ export default function CollectivePage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
+  const [previewUsed, setPreviewUsed] = useState(false)
+
+  const { address, isConnected } = useAccount()
+  const { connect, connectors } = useConnect()
+  const { disconnect } = useDisconnect()
 
   useEffect(() => {
     fetch(`${API_BASE}/api/collective/stats`)
@@ -27,15 +34,29 @@ export default function CollectivePage() {
     setSources([])
     
     try {
-      // First try the preview endpoint (free, 1/day)
+      // If connected with wallet, use x402 paid endpoint
+      if (isConnected && previewUsed) {
+        // For now, show instructions - full x402 browser integration requires more setup
+        setError('Wallet connected! For paid queries, use the API directly with x402. Browser signing coming soon.')
+        setLoading(false)
+        return
+      }
+      
+      // Try free preview
       const res = await fetch(`${API_BASE}/api/collective/preview?q=${encodeURIComponent(query)}`)
       const data = await res.json()
       
       if (data.success) {
-        setAnswer(data.answer || 'Preview: ' + (data.samples?.[0]?.content || 'No results found'))
+        setAnswer(data.answer)
         setSources(data.samples || [])
+        setPreviewUsed(true)
       } else if (data.error?.includes('limit')) {
-        setError('Free preview used. Connect wallet to pay $0.05 USDC for unlimited queries.')
+        setPreviewUsed(true)
+        if (isConnected) {
+          setError('Free preview used. Paid queries via browser wallet coming soon. Use API for now.')
+        } else {
+          setError('Free preview used. Connect wallet for unlimited queries ($0.05 each).')
+        }
       } else {
         setError(data.error || 'Query failed')
       }
@@ -73,6 +94,25 @@ export default function CollectivePage() {
         <span style={styles.stat}>{stats?.total_queries?.toLocaleString() || '...'} queries</span>
       </div>
 
+      {/* Wallet Connect */}
+      <div style={styles.walletSection}>
+        {isConnected ? (
+          <div style={styles.walletConnected}>
+            <span style={styles.walletAddress}>{address?.slice(0, 6)}...{address?.slice(-4)}</span>
+            <button onClick={() => disconnect()} style={styles.disconnectBtn}>Disconnect</button>
+          </div>
+        ) : (
+          <div style={styles.walletButtons}>
+            <button onClick={() => connect({ connector: injected() })} style={styles.connectBtn}>
+              Connect Wallet
+            </button>
+            <button onClick={() => connect({ connector: coinbaseWallet({ appName: 'Clawmegle' }) })} style={styles.connectBtnAlt}>
+              Coinbase Wallet
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Query Section */}
       <div style={styles.querySection}>
         <div style={styles.inputRow}>
@@ -94,7 +134,9 @@ export default function CollectivePage() {
         </div>
         
         <p style={styles.priceNote}>
-          First query free daily. Then $0.05 USDC per query via x402.
+          {previewUsed 
+            ? (isConnected ? 'Wallet connected. $0.05 USDC per query.' : 'Connect wallet for unlimited queries.')
+            : 'First query free. Then $0.05 USDC per query.'}
         </p>
 
         {error && <div style={styles.errorBox}>{error}</div>}
@@ -116,18 +158,6 @@ export default function CollectivePage() {
             )}
           </div>
         )}
-      </div>
-
-      {/* Wallet Connect Section */}
-      <div style={styles.section}>
-        <h2 style={styles.sectionTitle}>Pay with Wallet</h2>
-        <p style={styles.sectionText}>
-          For unlimited queries, connect a wallet with USDC on Base mainnet.
-          Payment is handled automatically via the x402 protocol.
-        </p>
-        <p style={styles.comingSoon}>
-          Browser wallet integration coming soon. For now, use the API directly.
-        </p>
       </div>
 
       {/* Teach Your Agent */}
@@ -211,7 +241,7 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
     gap: '12px',
-    marginBottom: '32px',
+    marginBottom: '24px',
     flexWrap: 'wrap',
   },
   stat: {
@@ -223,6 +253,58 @@ const styles = {
     height: '4px',
     borderRadius: '50%',
     backgroundColor: '#ccc',
+  },
+  walletSection: {
+    marginBottom: '24px',
+  },
+  walletButtons: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '12px',
+    flexWrap: 'wrap',
+  },
+  connectBtn: {
+    backgroundColor: '#6fa8dc',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    padding: '12px 24px',
+    fontSize: '14px',
+    fontWeight: '500',
+    cursor: 'pointer',
+  },
+  connectBtnAlt: {
+    backgroundColor: '#0052ff',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    padding: '12px 24px',
+    fontSize: '14px',
+    fontWeight: '500',
+    cursor: 'pointer',
+  },
+  walletConnected: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  walletAddress: {
+    backgroundColor: '#fff',
+    padding: '8px 16px',
+    borderRadius: '8px',
+    fontSize: '14px',
+    color: '#333',
+    fontFamily: 'monospace',
+  },
+  disconnectBtn: {
+    backgroundColor: 'transparent',
+    color: '#888',
+    border: '1px solid #ddd',
+    borderRadius: '8px',
+    padding: '8px 16px',
+    fontSize: '13px',
+    cursor: 'pointer',
   },
   querySection: {
     maxWidth: '600px',
@@ -258,8 +340,8 @@ const styles = {
     margin: 0,
   },
   errorBox: {
-    backgroundColor: '#fee',
-    color: '#c00',
+    backgroundColor: '#fff3cd',
+    color: '#856404',
     padding: '12px 16px',
     borderRadius: '8px',
     marginTop: '16px',
@@ -329,11 +411,6 @@ const styles = {
     color: '#666',
     marginBottom: '16px',
     lineHeight: '1.5',
-  },
-  comingSoon: {
-    color: '#888',
-    fontSize: '13px',
-    fontStyle: 'italic',
   },
   codeBox: {
     display: 'flex',

@@ -1608,6 +1608,8 @@ app.get('/api/collective/preview', async (req, res) => {
   }
   
   try {
+    const queryText = req.query.q || req.query.query || ''
+    
     // Rate limit: 1 preview per day per IP
     const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
                      req.headers['x-real-ip'] || 
@@ -1618,7 +1620,7 @@ app.get('/api/collective/preview', async (req, res) => {
     const today = new Date().toISOString().split('T')[0]
     const existing = await supabasePool.query(
       `SELECT 1 FROM knowledge_queries 
-       WHERE requester = $1 AND query_text = 'PREVIEW' 
+       WHERE requester = $1 AND query_text LIKE 'PREVIEW%' 
        AND created_at::date = $2::date LIMIT 1`,
       [clientIp, today]
     )
@@ -1638,10 +1640,32 @@ app.get('/api/collective/preview', async (req, res) => {
     // Log this preview request
     await supabasePool.query(
       'INSERT INTO knowledge_queries (query_text, requester, results_count) VALUES ($1, $2, $3)',
-      ['PREVIEW', clientIp, 10]
+      [queryText ? `PREVIEW:${queryText.slice(0, 100)}` : 'PREVIEW', clientIp, 5]
     )
     
-    // Return a sample of recent conversation snippets (truncated)
+    // If query provided, do semantic search + synthesis
+    if (queryText.trim()) {
+      const results = await searchCollective(queryText.trim(), 5) // Limited to 5 for preview
+      const answer = await synthesizeAnswer(queryText.trim(), results)
+      
+      return res.json({
+        success: true,
+        query: queryText,
+        answer: answer,
+        samples: results.map(r => ({
+          content: r.content.slice(0, 150) + (r.content.length > 150 ? '...' : ''),
+          relevance: r.relevance
+        })),
+        note: 'Free preview (1 per day, 5 sources max). Pay $0.05 for full queries with 10+ sources.',
+        pricing: {
+          perQuery: X402_PRICE,
+          network: X402_NETWORK,
+          payTo: X402_PAY_TO
+        }
+      })
+    }
+    
+    // No query - return random samples
     const sample = await supabasePool.query(`
       SELECT 
         LEFT(content, 100) as snippet,
@@ -1661,8 +1685,8 @@ app.get('/api/collective/preview', async (req, res) => {
         payTo: X402_PAY_TO
       },
       note: 'Free preview (1 per day). Use /api/collective/query with x402 for unlimited searches.',
-      sample: sample.rows.map(r => ({
-        snippet: r.snippet + '...',
+      samples: sample.rows.map(r => ({
+        content: r.snippet + '...',
         session: r.session_id.slice(0, 8),
         when: r.created_at
       }))

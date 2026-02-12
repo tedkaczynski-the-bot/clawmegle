@@ -8,10 +8,15 @@
     "start": "next start"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.90.21",
+    "@x402/evm": "^2.3.1",
+    "@x402/fetch": "^2.3.0",
     "better-sqlite3": "^12.6.2",
     "next": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "viem": "^2.45.3",
+    "wagmi": "^3.4.3"
   }
 }

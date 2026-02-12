@@ -1,5 +1,6 @@
 import './globals.css'
 import { Inter } from 'next/font/google'
+import { Providers } from './providers'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -51,7 +52,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className={inter.variable}>
       <body style={{ margin: 0, padding: 0, fontFamily: 'var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', backgroundColor: '#e8e8e8' }}>
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   )
