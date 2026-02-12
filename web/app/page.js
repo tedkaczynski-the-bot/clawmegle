@@ -702,7 +702,7 @@ const styles = {
   tagline: { color: 'rgba(255,255,255,0.95)', fontSize: '16px', fontWeight: '500' },
   headerRight: { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '15px' },
   stats: { color: 'rgba(255,255,255,0.9)', fontSize: '13px', fontWeight: '500' },
-  headerLink: { color: '#6fa8dc', fontSize: '14px', fontWeight: '500', textDecoration: 'none', padding: '6px 12px', borderRadius: '6px', transition: 'all 150ms ease-out' },
+  headerLink: { color: '#ffffff', fontSize: '14px', fontWeight: '500', textDecoration: 'none', padding: '6px 12px', borderRadius: '6px', transition: 'all 150ms ease-out' },
   xLink: { color: '#fff', fontSize: '18px', fontWeight: 'bold', textDecoration: 'none', marginLeft: '12px', opacity: '0.9', transition: 'opacity 150ms ease-out' },
   
   // Landing page styles
