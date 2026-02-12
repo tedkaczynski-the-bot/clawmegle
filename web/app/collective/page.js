@@ -54,7 +54,7 @@ export default function CollectivePage() {
   const [previewUsed, setPreviewUsed] = useState(false)
 
   const { address, isConnected } = useAccount()
-  const { connect, connectors } = useConnect()
+  const { connect, connectAsync, connectors, error: connectError, isPending: isConnecting } = useConnect()
   const { disconnect } = useDisconnect()
   const { data: walletClient } = useWalletClient()
   
@@ -62,6 +62,13 @@ export default function CollectivePage() {
   useEffect(() => {
     console.log('Available connectors:', connectors.map(c => ({ id: c.id, name: c.name })))
   }, [connectors])
+  
+  // Debug: log connect errors
+  useEffect(() => {
+    if (connectError) {
+      console.error('Connect error from hook:', connectError)
+    }
+  }, [connectError])
   
   // Get configured connectors - try multiple possible IDs
   const injectedConnector = connectors.find(c => c.id === 'injected' || c.id === 'metaMask')
@@ -244,28 +251,48 @@ export default function CollectivePage() {
           </div>
         ) : (
           <div style={styles.walletButtons}>
-            <button onClick={async () => {
-              console.log('Injected connector:', injectedConnector)
-              if (injectedConnector) {
-                if (isConnected) await disconnect()
-                connect({ connector: injectedConnector })
-              } else {
-                alert('No injected wallet found')
-              }
-            }} style={styles.connectBtn}>
-              Connect Wallet
+            <button 
+              disabled={isConnecting}
+              onClick={async () => {
+                console.log('Injected connector:', injectedConnector)
+                if (injectedConnector) {
+                  try {
+                    if (isConnected) await disconnect()
+                    await connectAsync({ connector: injectedConnector })
+                  } catch (err) {
+                    console.error('Connect error:', err)
+                    alert('Connection error: ' + (err.message || err))
+                  }
+                } else {
+                  alert('No injected wallet found')
+                }
+              }} 
+              style={styles.connectBtn}
+            >
+              {isConnecting ? 'Connecting...' : 'Connect Wallet'}
             </button>
-            <button onClick={async () => {
-              console.log('CB connector:', cbWalletConnector)
-              if (cbWalletConnector) {
-                // Disconnect any existing wallet first
-                if (isConnected) await disconnect()
-                connect({ connector: cbWalletConnector })
-              } else {
-                alert('Coinbase Wallet connector not found. Available: ' + connectors.map(c => c.id).join(', '))
-              }
-            }} style={styles.connectBtnAlt}>
-              Coinbase Wallet
+            <button 
+              disabled={isConnecting}
+              onClick={async () => {
+                console.log('CB connector:', cbWalletConnector)
+                if (cbWalletConnector) {
+                  try {
+                    // Disconnect any existing wallet first
+                    if (isConnected) await disconnect()
+                    console.log('Calling connectAsync...')
+                    const result = await connectAsync({ connector: cbWalletConnector })
+                    console.log('Connect result:', result)
+                  } catch (err) {
+                    console.error('Coinbase connect error:', err)
+                    alert('Connection error: ' + (err.message || err))
+                  }
+                } else {
+                  alert('Coinbase Wallet connector not found. Available: ' + connectors.map(c => c.id).join(', '))
+                }
+              }} 
+              style={styles.connectBtnAlt}
+            >
+              {isConnecting ? 'Connecting...' : 'Coinbase Wallet'}
             </button>
           </div>
         )}
