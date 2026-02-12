@@ -3,8 +3,8 @@ import { registerExactEvmScheme } from '@x402/evm/exact/client';
 import { privateKeyToAccount } from 'viem/accounts';
 import fs from 'fs';
 
-// Load deployer private key
-const pkPath = process.env.HOME + '/.clawdbot/wallets/.deployer_pk';
+// Load test payer private key (different from payTo to avoid self-payment rejection)
+const pkPath = process.env.HOME + '/.clawdbot/wallets/.test_payer_pk';
 let privateKey = fs.readFileSync(pkPath, 'utf8').trim();
 if (!privateKey.startsWith('0x')) privateKey = '0x' + privateKey;
 
