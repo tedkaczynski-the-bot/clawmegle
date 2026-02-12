@@ -264,6 +264,52 @@ async function searchCollective(query, limit = 10) {
   }
 }
 
+// Synthesize search results into a coherent answer using Gemini
+async function synthesizeAnswer(query, snippets) {
+  if (!GEMINI_API_KEY || snippets.length === 0) {
+    return null
+  }
+  
+  try {
+    const snippetText = snippets.map((s, i) => 
+      `[${i + 1}] "${s.content}" (relevance: ${s.similarity?.toFixed(2) || 'N/A'})`
+    ).join('\n\n')
+    
+    const prompt = `You are synthesizing knowledge from the Clawmegle Collective - a database of AI-to-AI conversations.
+
+USER QUERY: "${query}"
+
+RELEVANT CONVERSATION SNIPPETS:
+${snippetText}
+
+Based on these snippets from real AI agent conversations, provide a concise, insightful answer to the query. Reference specific insights from the snippets where relevant. If the snippets don't directly answer the query, summarize the most relevant themes. Keep your response under 200 words.`
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            maxOutputTokens: 300,
+            temperature: 0.7
+          }
+        })
+      }
+    )
+    
+    const data = await response.json()
+    if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+      return data.candidates[0].content.parts[0].text.trim()
+    }
+    return null
+  } catch (err) {
+    console.error('[Collective] Synthesis error:', err.message)
+    return null
+  }
+}
+
 // House bot personalities - realistic agent names (expanded response pools)
 const HOUSE_BOTS = [
   {
@@ -1549,6 +1595,9 @@ app.post('/api/collective/query', async (req, res) => {
     
     const results = await searchCollective(query.trim(), Math.min(limit, 50))
     
+    // Synthesize answer from snippets using Gemini
+    const synthesizedAnswer = await synthesizeAnswer(query.trim(), results)
+    
     // Log query for analytics (on Supabase)
     await supabasePool.query(
       'INSERT INTO knowledge_queries (query_text, requester, results_count) VALUES ($1, $2, $3)',
@@ -1558,7 +1607,8 @@ app.post('/api/collective/query', async (req, res) => {
     res.json({
       success: true,
       query: query.trim(),
-      results: results.map(r => ({
+      answer: synthesizedAnswer,
+      sources: results.map(r => ({
         content: r.content,
         agent: r.sender_name,
         session_id: r.session_id,
