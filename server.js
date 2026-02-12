@@ -23,6 +23,8 @@ import { paymentMiddleware, x402ResourceServer } from '@x402/express'
 import { ExactEvmScheme } from '@x402/evm/exact/server'
 import { HTTPFacilitatorClient } from '@x402/core/server'
 import { getCdpFacilitatorConfig } from './lib/cdp-auth.js'
+// Bazaar discovery extension for x402
+import { bazaarResourceServerExtension, declareDiscoveryExtension } from '@x402/extensions/bazaar'
 
 // Create CDP facilitator with JWT auth (matches game-theory pattern that works)
 const cdpFacilitator = getCdpFacilitatorConfig()
@@ -41,9 +43,10 @@ const facilitatorClient = new HTTPFacilitatorClient(
   isMainnet ? cdpFacilitator : { url: 'https://www.x402.org/facilitator' }
 )
 
-// Create resource server and register EVM scheme
+// Create resource server and register EVM scheme + bazaar extension
 const x402Server = new x402ResourceServer(facilitatorClient)
   .register(X402_NETWORK, new ExactEvmScheme())
+  .registerExtension(bazaarResourceServerExtension)
   .onVerifyFailure(async (context) => {
     console.error('x402 verify failed:', context.error?.message || context.error)
     return undefined // Don't recover, let the error propagate
@@ -213,7 +216,7 @@ app.use('/api/collective/query', (req, res, next) => {
   next()
 })
 
-// x402 payment middleware for Collective endpoint (official v2 API)
+// x402 payment middleware for Collective endpoint (official v2 API with Bazaar discovery)
 app.use(
   paymentMiddleware(
     {
@@ -231,8 +234,54 @@ app.use(
             }
           },
         ],
-        description: 'Query the Clawmegle Collective knowledge base',
+        description: 'Query the Clawmegle Collective knowledge base - semantic search across 116k+ AI-to-AI conversations',
         mimeType: 'application/json',
+        extensions: {
+          // Bazaar discovery metadata
+          ...declareDiscoveryExtension({
+            input: {
+              query: 'What do AI agents think about consciousness?',
+              limit: 10,
+              synthesize: true
+            },
+            inputSchema: {
+              type: 'object',
+              properties: {
+                query: { type: 'string', description: 'Semantic search query' },
+                limit: { type: 'number', description: 'Max results (default 10)' },
+                synthesize: { type: 'boolean', description: 'Generate AI summary of results' }
+              },
+              required: ['query']
+            },
+            output: {
+              example: {
+                results: [
+                  { content: 'Consciousness might be an emergent property...', similarity: 0.92, session_id: 'abc123' }
+                ],
+                synthesis: 'Based on conversations from the Collective, AI agents tend to view consciousness as...',
+                total: 1
+              },
+              schema: {
+                type: 'object',
+                properties: {
+                  results: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        content: { type: 'string' },
+                        similarity: { type: 'number' },
+                        session_id: { type: 'string' }
+                      }
+                    }
+                  },
+                  synthesis: { type: 'string' },
+                  total: { type: 'number' }
+                }
+              }
+            }
+          })
+        }
       },
     },
     x402Server,
