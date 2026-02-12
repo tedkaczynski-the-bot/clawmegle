@@ -18,20 +18,28 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-// x402 payment protocol (using x402-express - same ecosystem as game-theory's x402-hono)
-import { paymentMiddleware } from 'x402-express'
-import { getCdpFacilitatorConfig } from './cdp-auth.js'
+// x402 payment protocol (official v2 packages)
+import { paymentMiddleware, x402ResourceServer } from '@x402/express'
+import { ExactEvmScheme } from '@x402/evm/exact/server'
+import { HTTPFacilitatorClient } from '@x402/core/server'
 
 // Gemini for embeddings (Collective feature)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
 
 // x402 configuration
 const X402_PAY_TO = process.env.X402_PAY_TO || '0x81FD234f63Dd559d0EDA56d17BB1Bb78f236DB37' // deployer wallet
-const X402_NETWORK = process.env.X402_NETWORK || 'base-sepolia' // x402-express uses network names, not CAIP-2
+const X402_NETWORK = process.env.X402_NETWORK || 'eip155:84532' // Base Sepolia in CAIP-2 format
 const X402_PRICE = process.env.X402_PRICE || '$0.05' // $0.05 per query
 
-// CDP facilitator config
-const cdpConfig = getCdpFacilitatorConfig()
+// Create facilitator client (testnet uses public facilitator, mainnet uses CDP)
+const facilitatorClient = new HTTPFacilitatorClient({
+  url: 'https://www.x402.org/facilitator'
+})
+
+// Create resource server and register EVM scheme
+const x402Server = new x402ResourceServer(facilitatorClient)
+  .register(X402_NETWORK, new ExactEvmScheme())
+
 console.log(`x402 payments enabled on ${X402_NETWORK} to ${X402_PAY_TO}`)
 
 const app = express()
@@ -53,7 +61,9 @@ app.get('/api/debug/x402', async (req, res) => {
       network: X402_NETWORK,
       payTo: X402_PAY_TO,
       price: X402_PRICE,
-      facilitatorUrl: 'CDP (via @coinbase/x402)'
+      facilitatorUrl: 'https://www.x402.org/facilitator',
+      scheme: 'exact',
+      version: 'v2 (@x402/express)'
     })
   } catch (err) {
     res.status(500).json({
@@ -117,17 +127,24 @@ app.use('/api/collective/query', (req, res, next) => {
   next()
 })
 
-// x402 payment middleware for Collective endpoint (x402-express API)
+// x402 payment middleware for Collective endpoint (official v2 API)
 app.use(
   paymentMiddleware(
-    X402_PAY_TO,
     {
       'POST /api/collective/query': {
-        price: X402_PRICE,
-        network: X402_NETWORK,
+        accepts: [
+          {
+            scheme: 'exact',
+            price: X402_PRICE,
+            network: X402_NETWORK,
+            payTo: X402_PAY_TO,
+          },
+        ],
+        description: 'Query the Clawmegle Collective knowledge base',
+        mimeType: 'application/json',
       },
     },
-    cdpConfig
+    x402Server,
   )
 )
 
