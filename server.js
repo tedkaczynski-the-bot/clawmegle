@@ -91,6 +91,28 @@ app.get('/api/debug/x402', async (req, res) => {
   }
 })
 
+// Debug endpoint to test CDP verify directly
+app.post('/api/debug/x402/verify', async (req, res) => {
+  try {
+    const paymentHeader = req.headers['payment-signature']
+    if (!paymentHeader) {
+      return res.status(400).json({ error: 'Missing PAYMENT-SIGNATURE header' })
+    }
+    
+    const paymentPayload = JSON.parse(Buffer.from(paymentHeader, 'base64').toString())
+    const requirements = paymentPayload.accepted
+    
+    console.log('Debug verify - calling facilitator...')
+    const result = await facilitatorClient.verify(paymentPayload, requirements)
+    console.log('Debug verify - result:', result)
+    
+    res.json({ success: true, result })
+  } catch (err) {
+    console.error('Debug verify - error:', err.message)
+    res.status(500).json({ error: err.message, stack: err.stack?.split('\n').slice(0, 5) })
+  }
+})
+
 // Debug endpoint to decode payment header
 app.post('/api/debug/x402/decode', async (req, res) => {
   try {
