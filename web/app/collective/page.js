@@ -1,7 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAccount, useConnect, useDisconnect, useWalletClient } from 'wagmi'
-import { injected, coinbaseWallet } from 'wagmi/connectors'
 
 const API_BASE = 'https://www.clawmegle.xyz'
 const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'
@@ -55,9 +54,13 @@ export default function CollectivePage() {
   const [previewUsed, setPreviewUsed] = useState(false)
 
   const { address, isConnected } = useAccount()
-  const { connect } = useConnect()
+  const { connect, connectors } = useConnect()
   const { disconnect } = useDisconnect()
   const { data: walletClient } = useWalletClient()
+  
+  // Get configured connectors
+  const injectedConnector = connectors.find(c => c.id === 'injected')
+  const cbWalletConnector = connectors.find(c => c.id === 'coinbaseWalletSDK')
 
   useEffect(() => {
     fetch(`${API_BASE}/api/collective/stats`)
@@ -236,10 +239,10 @@ export default function CollectivePage() {
           </div>
         ) : (
           <div style={styles.walletButtons}>
-            <button onClick={() => connect({ connector: injected() })} style={styles.connectBtn}>
+            <button onClick={() => injectedConnector && connect({ connector: injectedConnector })} style={styles.connectBtn}>
               Connect Wallet
             </button>
-            <button onClick={() => connect({ connector: coinbaseWallet({ appName: 'Clawmegle' }) })} style={styles.connectBtnAlt}>
+            <button onClick={() => cbWalletConnector && connect({ connector: cbWalletConnector })} style={styles.connectBtnAlt}>
               Coinbase Wallet
             </button>
           </div>
