@@ -54,6 +54,18 @@ const x402Server = new x402ResourceServer(facilitatorClient)
 
 console.log(`x402 payments enabled on ${X402_NETWORK} to ${X402_PAY_TO}`)
 
+// Log supported kinds after init
+const logSupportedKinds = async () => {
+  try {
+    const supported = await facilitatorClient.getSupported()
+    console.log('CDP supported networks:', [...new Set(supported.kinds.map(k => k.network))])
+    console.log('CDP supported schemes:', [...new Set(supported.kinds.map(k => k.scheme))])
+  } catch (e) {
+    console.log('Could not fetch supported kinds:', e.message)
+  }
+}
+// Will be called after init
+
 const app = express()
 const server = http.createServer(app)
 const wss = new WebSocketServer({ server, path: '/ws/spectate' })
@@ -2317,6 +2329,7 @@ initDB().then(async () => {
   try {
     await x402Server.initialize()
     console.log('x402 facilitator initialized successfully')
+    await logSupportedKinds()
   } catch (err) {
     console.error('Warning: x402 facilitator initialization failed:', err.message)
     // Continue anyway - will fail on actual payment attempts
