@@ -1,0 +1,14 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "5CLN88CJAW.xyz.clawmegle.app",
+        "paths": ["/wallet/*", "/callback/*"]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["5CLN88CJAW.xyz.clawmegle.app"]
+  }
+}
