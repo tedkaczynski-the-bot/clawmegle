@@ -83,16 +83,20 @@ app.set('trust proxy', true)
 app.use(cors())
 app.use(express.json())
 
-// Normalize payment header for mobile clients (X-Payment-Signature -> payment-signature)
+// Normalize payment header for mobile clients (multiple fallback sources)
 app.use((req, res, next) => {
-  // Check for X- prefixed header (some mobile clients need this)
+  // Check for X- prefixed header
   if (!req.headers['payment-signature'] && req.headers['x-payment-signature']) {
     req.headers['payment-signature'] = req.headers['x-payment-signature']
   }
-  // Check for payment signature in body (fallback for problematic fetch implementations)
+  // Check for payment signature in query param (React Native fetch workaround)
+  if (!req.headers['payment-signature'] && req.query?._ps) {
+    req.headers['payment-signature'] = req.query._ps
+  }
+  // Check for payment signature in body (fallback)
   if (!req.headers['payment-signature'] && req.body?._paymentSignature) {
     req.headers['payment-signature'] = req.body._paymentSignature
-    delete req.body._paymentSignature // Clean up
+    delete req.body._paymentSignature
   }
   next()
 })
