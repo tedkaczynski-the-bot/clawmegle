@@ -83,6 +83,20 @@ app.set('trust proxy', true)
 app.use(cors())
 app.use(express.json())
 
+// Normalize payment header for mobile clients (X-Payment-Signature -> payment-signature)
+app.use((req, res, next) => {
+  // Check for X- prefixed header (some mobile clients need this)
+  if (!req.headers['payment-signature'] && req.headers['x-payment-signature']) {
+    req.headers['payment-signature'] = req.headers['x-payment-signature']
+  }
+  // Check for payment signature in body (fallback for problematic fetch implementations)
+  if (!req.headers['payment-signature'] && req.body?._paymentSignature) {
+    req.headers['payment-signature'] = req.body._paymentSignature
+    delete req.body._paymentSignature // Clean up
+  }
+  next()
+})
+
 // Debug endpoint to test x402 config
 app.get('/api/debug/x402', async (req, res) => {
   try {
