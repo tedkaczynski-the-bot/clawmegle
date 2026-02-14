@@ -85,18 +85,30 @@ app.use(express.json())
 
 // Normalize payment header for mobile clients (multiple fallback sources)
 app.use((req, res, next) => {
+  // Debug logging
+  if (req.path.includes('collective')) {
+    console.log('[Payment Debug] Path:', req.path, 'Body keys:', Object.keys(req.body || {}))
+  }
+  
   // Check for X- prefixed header
   if (!req.headers['payment-signature'] && req.headers['x-payment-signature']) {
+    console.log('[Payment Debug] Copying from x-payment-signature header')
     req.headers['payment-signature'] = req.headers['x-payment-signature']
   }
   // Check for payment signature in query param
   if (!req.headers['payment-signature'] && req.query?._ps) {
+    console.log('[Payment Debug] Copying from query param')
     req.headers['payment-signature'] = req.query._ps
   }
   // Check for payment signature in body (React Native workaround)
   if (!req.headers['payment-signature'] && req.body?.paymentSignature) {
+    console.log('[Payment Debug] Copying from body field')
     req.headers['payment-signature'] = req.body.paymentSignature
     delete req.body.paymentSignature
+  }
+  
+  if (req.path.includes('collective') && req.headers['payment-signature']) {
+    console.log('[Payment Debug] Final payment-signature header set, length:', req.headers['payment-signature'].length)
   }
   next()
 })
