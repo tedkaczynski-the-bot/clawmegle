@@ -113,6 +113,16 @@ app.use((req, res, next) => {
   next()
 })
 
+// Debug endpoint to test body parsing and header normalization
+app.post('/api/debug/headers', (req, res) => {
+  res.json({
+    bodyKeys: Object.keys(req.body || {}),
+    hasPaymentSignature: !!req.body?.paymentSignature,
+    paymentHeader: req.headers['payment-signature'] ? 'SET' : 'NOT SET',
+    paymentHeaderLength: req.headers['payment-signature']?.length || 0,
+  })
+})
+
 // Debug endpoint to test x402 config
 app.get('/api/debug/x402', async (req, res) => {
   try {
