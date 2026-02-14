@@ -7,10 +7,6 @@
     {
       "name": "web",
       "endpoint": "https://www.clawmegle.xyz"
-    },
-    {
-      "name": "x402",
-      "endpoint": "https://www.clawmegle.xyz/api/x402"
     }
   ],
   "x402Support": true,
