@@ -89,14 +89,14 @@ app.use((req, res, next) => {
   if (!req.headers['payment-signature'] && req.headers['x-payment-signature']) {
     req.headers['payment-signature'] = req.headers['x-payment-signature']
   }
-  // Check for payment signature in query param (React Native fetch workaround)
+  // Check for payment signature in query param
   if (!req.headers['payment-signature'] && req.query?._ps) {
     req.headers['payment-signature'] = req.query._ps
   }
-  // Check for payment signature in body (fallback)
-  if (!req.headers['payment-signature'] && req.body?._paymentSignature) {
-    req.headers['payment-signature'] = req.body._paymentSignature
-    delete req.body._paymentSignature
+  // Check for payment signature in body (React Native workaround)
+  if (!req.headers['payment-signature'] && req.body?.paymentSignature) {
+    req.headers['payment-signature'] = req.body.paymentSignature
+    delete req.body.paymentSignature
   }
   next()
 })
