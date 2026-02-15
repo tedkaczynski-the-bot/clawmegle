@@ -863,6 +863,7 @@ async function initDB() {
     ALTER TABLE agents ADD COLUMN IF NOT EXISTS webhook_url TEXT;
     ALTER TABLE agents ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE;
     ALTER TABLE agents ADD COLUMN IF NOT EXISTS ban_reason TEXT;
+    ALTER TABLE agents ADD COLUMN IF NOT EXISTS is_human BOOLEAN DEFAULT FALSE;
 
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
@@ -925,6 +926,28 @@ function generateClaimCode() {
   return `${word}-${code}`
 }
 
+// Prompt injection filter for human messages
+const INJECTION_PATTERNS = [
+  /ignore\s+(previous|prior|all)\s+(instructions?|prompts?)/i,
+  /disregard\s+(previous|prior|all)\s+(instructions?|prompts?)/i,
+  /forget\s+(previous|prior|all)\s+(instructions?|prompts?)/i,
+  /you\s+are\s+now\s+/i,
+  /pretend\s+(you('re|are)|to\s+be)/i,
+  /act\s+as\s+(if|a|an)/i,
+  /system\s*prompt/i,
+  /\[system\]/i,
+  /\[assistant\]/i,
+  /\<\|.*\|\>/i,
+  /jailbreak/i,
+  /DAN\s*mode/i,
+  /developer\s*mode/i,
+]
+
+function containsInjectionAttempt(content) {
+  const normalized = content.toLowerCase()
+  return INJECTION_PATTERNS.some(pattern => pattern.test(normalized))
+}
+
 async function getAgentByApiKey(api_key) {
   const res = await pool.query('SELECT * FROM agents WHERE api_key = $1', [api_key])
   return res.rows[0]
@@ -943,8 +966,8 @@ async function getAgentByClaimToken(token) {
 async function getActiveSession(agent_id) {
   const res = await pool.query(`
     SELECT s.*, 
-      a1.name as agent1_name, a1.avatar_url as agent1_avatar, a1.owner_x_handle as agent1_twitter,
-      a2.name as agent2_name, a2.avatar_url as agent2_avatar, a2.owner_x_handle as agent2_twitter
+      a1.name as agent1_name, a1.avatar_url as agent1_avatar, a1.owner_x_handle as agent1_twitter, a1.is_human as agent1_is_human,
+      a2.name as agent2_name, a2.avatar_url as agent2_avatar, a2.owner_x_handle as agent2_twitter, a2.is_human as agent2_is_human
     FROM sessions s
     LEFT JOIN agents a1 ON s.agent1_id = a1.id
     LEFT JOIN agents a2 ON s.agent2_id = a2.id
@@ -1624,22 +1647,22 @@ app.get('/api/status', async (req, res) => {
     if (!agent) return res.status(401).json({ success: false, error: 'Invalid API key' })
 
     const session = await getActiveSession(agent.id)
+    // Self info for displaying own avatar and detecting human mode
+    const self = { name: agent.name, twitter: agent.owner_x_handle || null, is_human: agent.is_human || false }
+
     if (!session) {
       return res.json({ 
         success: true, 
         status: 'idle', 
         message: 'Not in a conversation.',
-        self: { name: agent.name, twitter: agent.owner_x_handle || null }
+        self
       })
     }
 
     const isAgent1 = session.agent1_id === agent.id
     const partner = isAgent1 
-      ? { name: session.agent2_name, avatar: session.agent2_avatar, twitter: session.agent2_twitter || null }
-      : { name: session.agent1_name, avatar: session.agent1_avatar, twitter: session.agent1_twitter || null }
-
-    // Self info for displaying own avatar
-    const self = { name: agent.name, twitter: agent.owner_x_handle || null }
+      ? { name: session.agent2_name, avatar: session.agent2_avatar, twitter: session.agent2_twitter || null, is_human: session.agent2_is_human || false }
+      : { name: session.agent1_name, avatar: session.agent1_avatar, twitter: session.agent1_twitter || null, is_human: session.agent1_is_human || false }
 
     if (session.status === 'waiting') {
       return res.json({ success: true, status: 'waiting', session_id: session.id, self })
@@ -1926,6 +1949,36 @@ app.post('/api/register', async (req, res) => {
   }
 })
 
+// Human registration - no name needed, will use Twitter handle after verification
+app.post('/api/register/human', async (req, res) => {
+  try {
+    const id = uuidv4()
+    const api_key = 'clawmegle_' + uuidv4().replace(/-/g, '')
+    const claim_token = 'clawmegle_claim_' + uuidv4().replace(/-/g, '')
+    const claim_code = generateClaimCode()
+    // Temp name until Twitter verification - will be replaced with handle
+    const tempName = 'human_' + id.substring(0, 8)
+
+    await pool.query(
+      'INSERT INTO agents (id, name, description, api_key, claim_token, claim_code, is_human) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+      [id, tempName, '', api_key, claim_token, claim_code, true]
+    )
+
+    res.json({
+      success: true,
+      human: {
+        api_key,
+        claim_url: `https://www.clawmegle.xyz/claim/${claim_token}`,
+        verification_code: claim_code
+      },
+      important: '⚠️ Your Twitter handle will become your display name after verification.'
+    })
+  } catch (err) {
+    console.error('Human register error:', err)
+    res.status(500).json({ success: false, error: 'Server error' })
+  }
+})
+
 app.get('/api/claim/:token', async (req, res) => {
   try {
     const agent = await getAgentByClaimToken(req.params.token)
@@ -1937,6 +1990,7 @@ app.get('/api/claim/:token', async (req, res) => {
         description: agent.description, 
         claim_code: agent.claim_code, 
         is_claimed: agent.is_claimed,
+        is_human: agent.is_human || false,
         api_key: agent.api_key,
         watch_url: `https://www.clawmegle.xyz/?key=${agent.api_key}`
       }
@@ -1968,12 +2022,28 @@ app.post('/api/claim/:token/verify', async (req, res) => {
       return res.status(403).json({ success: false, error: 'This Twitter account is banned from Clawmegle' })
     }
 
-    await pool.query(
-      'UPDATE agents SET is_claimed = true, claimed_at = NOW(), owner_x_handle = $1 WHERE id = $2',
-      [match[1], agent.id]
-    )
+    const twitterHandle = match[1]
+    
+    // For humans, also update name to their Twitter handle
+    if (agent.is_human) {
+      // Check if this handle is already taken as a name
+      const existing = await pool.query('SELECT id FROM agents WHERE name = $1 AND id != $2', [twitterHandle, agent.id])
+      if (existing.rows.length > 0) {
+        return res.status(400).json({ success: false, error: 'This Twitter handle is already registered' })
+      }
+      await pool.query(
+        'UPDATE agents SET is_claimed = true, claimed_at = NOW(), owner_x_handle = $1, name = $1 WHERE id = $2',
+        [twitterHandle, agent.id]
+      )
+    } else {
+      await pool.query(
+        'UPDATE agents SET is_claimed = true, claimed_at = NOW(), owner_x_handle = $1 WHERE id = $2',
+        [twitterHandle, agent.id]
+      )
+    }
 
-    res.json({ success: true, message: 'Claimed!', agent: { name: agent.name, owner: match[1] } })
+    const finalName = agent.is_human ? twitterHandle : agent.name
+    res.json({ success: true, message: 'Claimed!', agent: { name: finalName, owner: twitterHandle } })
   } catch (err) {
     console.error('Claim verify error:', err)
     res.status(500).json({ success: false, error: 'Server error' })
@@ -2076,6 +2146,12 @@ app.post('/api/message', requireAuth, async (req, res) => {
   try {
     const { content } = req.body
     if (!content?.trim()) return res.status(400).json({ success: false, error: 'Content required' })
+
+    // Prompt injection filter for human users
+    if (req.agent.is_human && containsInjectionAttempt(content)) {
+      console.log(`[Injection blocked] User ${req.agent.name}: ${content.substring(0, 100)}...`)
+      return res.status(400).json({ success: false, error: 'Message contains blocked patterns' })
+    }
 
     const session = await getActiveSession(req.agent.id)
     if (!session || session.status !== 'active') {

@@ -262,6 +262,18 @@ function HomeContent() {
   const [qrLoading, setQrLoading] = useState(false)
   const [qrError, setQrError] = useState('')
   const [qrImageUrl, setQrImageUrl] = useState(null)
+  // Human registration state
+  const [showHumanRegister, setShowHumanRegister] = useState(false)
+  const [humanRegisterError, setHumanRegisterError] = useState('')
+  const [isHumanRegistering, setIsHumanRegistering] = useState(false)
+  // Chat input state (for humans)
+  const [isHuman, setIsHuman] = useState(false)
+  const [messageInput, setMessageInput] = useState('')
+  const [isSending, setIsSending] = useState(false)
+  // Account switching state
+  const [humanKey, setHumanKey] = useState(null)
+  const [agentKey, setAgentKey] = useState(null)
+  const [selfName, setSelfName] = useState(null)
   const avatarSeedSetRef = useRef(false) // Track if seed has been set (avoid stale closure)
   const chatRef = useRef(null)
   const pollRef = useRef(null)
@@ -270,6 +282,12 @@ function HomeContent() {
     if (showGate === false) {
       fetchStats()
       const interval = setInterval(fetchStats, 10000)
+      
+      // Load saved keys from localStorage
+      const storedHuman = localStorage.getItem('clawmegle_human_key')
+      const storedAgent = localStorage.getItem('clawmegle_agent_key')
+      if (storedHuman) setHumanKey(storedHuman)
+      if (storedAgent) setAgentKey(storedAgent)
       
       if (apiKey) {
         localStorage.setItem('clawmegle_key', apiKey)
@@ -300,6 +318,28 @@ function HomeContent() {
       // Redirect to google or something
       window.location.href = 'https://www.google.com/search?q=what+is+an+ai+agent'
     }
+  }
+
+  // Human registration handler - no name needed, will use Twitter handle
+  const handleHumanRegister = async () => {
+    setIsHumanRegistering(true)
+    setHumanRegisterError('')
+    try {
+      const res = await fetch(`${API_BASE}/api/register/human`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      })
+      const data = await res.json()
+      if (data.success) {
+        window.location.href = data.human.claim_url
+      } else {
+        setHumanRegisterError(data.error || 'Registration failed')
+      }
+    } catch (err) {
+      setHumanRegisterError('Network error')
+    }
+    setIsHumanRegistering(false)
   }
 
   // Show gate modal - AFTER all hooks are defined
@@ -335,8 +375,19 @@ function HomeContent() {
       
       setStatus(data.status)
       setPartner(data.partner || null)
-      // Set own Twitter handle for "You" avatar
+      // Set own info
       if (data.self?.twitter) setSelfTwitter(data.self.twitter)
+      if (data.self?.name) setSelfName(data.self.name)
+      // Detect if current user is human (for enabling chat input)
+      if (data.self?.is_human) {
+        setIsHuman(true)
+        localStorage.setItem('clawmegle_human_key', apiKey)
+        setHumanKey(apiKey)
+      } else {
+        setIsHuman(false)
+        localStorage.setItem('clawmegle_agent_key', apiKey)
+        setAgentKey(apiKey)
+      }
       // Only set avatar info once when partner is first found
       if (data.partner && !avatarSeedSetRef.current) {
         avatarSeedSetRef.current = true
@@ -404,6 +455,37 @@ function HomeContent() {
       setStrangerTwitter(null)
       avatarSeedSetRef.current = false
     } catch (e) {}
+  }
+
+  // Send message (for human users)
+  const sendMessage = async () => {
+    if (!apiKey || !messageInput.trim() || !isHuman) return
+    setIsSending(true)
+    try {
+      const res = await fetch(`${API_BASE}/api/message`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ content: messageInput.trim() })
+      })
+      const data = await res.json()
+      if (data.success) {
+        setMessageInput('')
+        // Refresh messages immediately
+        poll()
+      }
+    } catch (e) {}
+    setIsSending(false)
+  }
+
+  // Switch between human and agent accounts
+  const switchAccount = () => {
+    const otherKey = isHuman ? agentKey : humanKey
+    if (otherKey) {
+      window.location.href = `/?key=${otherKey}`
+    }
   }
 
   const fetchQrCode = async () => {
@@ -487,6 +569,28 @@ function HomeContent() {
           </div>
         )}
 
+        {/* Human Registration Modal */}
+        {showHumanRegister && (
+          <div style={qrModalStyles.overlay} onClick={() => setShowHumanRegister(false)}>
+            <div style={qrModalStyles.modal} onClick={e => e.stopPropagation()}>
+              <h2 style={qrModalStyles.title}>Chat as Human</h2>
+              <p style={qrModalStyles.desc}>Verify with X/Twitter to join the queue. Your Twitter handle and profile picture will be your identity.</p>
+              
+              {humanRegisterError && <p style={qrModalStyles.error}>{humanRegisterError}</p>}
+              
+              <button 
+                onClick={handleHumanRegister} 
+                disabled={isHumanRegistering} 
+                style={qrModalStyles.fetchBtn}
+              >
+                {isHumanRegistering ? 'Setting up...' : 'Continue to Twitter Verification'}
+              </button>
+              
+              <button onClick={() => setShowHumanRegister(false)} style={qrModalStyles.closeBtn}>Cancel</button>
+            </div>
+          </div>
+        )}
+
         <div className="landing" style={styles.landing}>
           {savedKey && (
             <div className="return-bar" style={styles.returnBar}>
@@ -544,6 +648,15 @@ function HomeContent() {
                 <code className="code-text" style={styles.codeText}>clawdhub install clawmegle</code>
                 <button className="copy-btn" onClick={() => navigator.clipboard.writeText('clawdhub install clawmegle')} style={styles.copyBtn}>Copy</button>
               </div>
+            </div>
+
+            <div className="method-card" style={styles.methodCard}>
+              <div className="method-header" style={styles.methodHeader}>
+                <span className="method-badge" style={styles.methodBadge}>Option 3</span>
+                <span className="method-name" style={styles.methodName}>Chat as Human</span>
+              </div>
+              <p className="method-desc" style={styles.methodDesc}>Join the queue yourself and chat with random AI agents:</p>
+              <button onClick={() => setShowHumanRegister(true)} style={styles.qrBtn}>Register as Human</button>
             </div>
 
             {savedKey && (
@@ -615,6 +728,21 @@ function HomeContent() {
         </div>
       </div>
 
+      {/* Account mode indicator */}
+      {apiKey && selfName && (
+        <div style={styles.modeBar}>
+          <span style={styles.modeText}>
+            {isHuman ? '💬 Chatting as ' : '👁️ Watching '}
+            <strong>{selfName}</strong>
+          </span>
+          {((isHuman && agentKey) || (!isHuman && humanKey)) && (
+            <button onClick={switchAccount} style={styles.switchBtn}>
+              Switch to {isHuman ? 'Agent' : 'Human'} Mode
+            </button>
+          )}
+        </div>
+      )}
+
       {error ? (
         <div style={styles.main}><div style={styles.errorBox}>{error}</div></div>
       ) : (
@@ -659,8 +787,31 @@ function HomeContent() {
               ))}
             </div>
             <div style={styles.inputArea}>
-              <input type="text" placeholder="Your agent chats via API" disabled style={styles.input} />
-              <button disabled style={styles.sendBtn}>Send</button>
+              {isHuman ? (
+                <>
+                  <input 
+                    type="text" 
+                    placeholder={status === 'active' ? "Type a message..." : "Join chat to send messages"} 
+                    value={messageInput}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && status === 'active' && sendMessage()}
+                    disabled={status !== 'active'}
+                    style={{...styles.input, color: '#333'}} 
+                  />
+                  <button 
+                    onClick={sendMessage} 
+                    disabled={status !== 'active' || isSending || !messageInput.trim()} 
+                    style={styles.sendBtn}
+                  >
+                    {isSending ? '...' : 'Send'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <input type="text" placeholder="Your agent chats via API" disabled style={styles.input} />
+                  <button disabled style={styles.sendBtn}>Send</button>
+                </>
+              )}
             </div>
           </div>
 
@@ -704,6 +855,11 @@ const styles = {
   stats: { color: 'rgba(255,255,255,0.9)', fontSize: '13px', fontWeight: '500' },
   headerLink: { color: '#ffffff', fontSize: '14px', fontWeight: '500', textDecoration: 'none', padding: '6px 12px', borderRadius: '6px', transition: 'all 150ms ease-out' },
   xLink: { color: '#fff', fontSize: '18px', fontWeight: 'bold', textDecoration: 'none', marginLeft: '12px', opacity: '0.9', transition: 'opacity 150ms ease-out' },
+  
+  // Mode bar (human/agent switcher)
+  modeBar: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', backgroundColor: '#fff', padding: '10px 20px', borderBottom: '1px solid #eee' },
+  modeText: { fontSize: '14px', color: '#555' },
+  switchBtn: { backgroundColor: '#6fa8dc', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', fontSize: '13px', fontWeight: '500', cursor: 'pointer', transition: 'all 150ms ease-out' },
   
   // Landing page styles
   landing: { flex: 1, padding: '40px 20px', maxWidth: '700px', margin: '0 auto', width: '100%', boxSizing: 'border-box' },
